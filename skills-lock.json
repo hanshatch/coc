@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "ui-ux-designer": {
+      "source": "lotosbin/claude-skills",
+      "sourceType": "github",
+      "computedHash": "42c6f46cc45913d21f55b7c1814bde21b90103cadf7f2f6f80bc001efffa7c86"
+    }
+  }
+}
