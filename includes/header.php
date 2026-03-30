@@ -12,6 +12,7 @@ if (!isset($pageTitle)) {
 
 $user        = currentUser();
 $currentPage = basename($_SERVER['PHP_SELF']);
+$currentName = str_replace('.php', '', $currentPage);
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -45,34 +46,34 @@ $currentPage = basename($_SERVER['PHP_SELF']);
     </div>
 
     <nav class="ct-sidebar-nav">
-        <a href="index.php" class="nav-link <?= $currentPage === 'index.php' ? 'active' : '' ?>">
+        <a href="index" class="nav-link <?= $currentName === 'index' ? 'active' : '' ?>">
             <span class="nav-icon"><i class="bi bi-speedometer2"></i></span> Dashboard
         </a>
-        <a href="jugadores.php" class="nav-link <?= $currentPage === 'jugadores.php' ? 'active' : '' ?>">
+        <a href="jugadores" class="nav-link <?= $currentName === 'jugadores' ? 'active' : '' ?>">
             <span class="nav-icon"><i class="bi bi-people-fill"></i></span> Jugadores
         </a>
-        <a href="guerras.php" class="nav-link <?= $currentPage === 'guerras.php' || $currentPage === 'guerra_detalle.php' ? 'active' : '' ?>">
+        <a href="guerras" class="nav-link <?= $currentName === 'guerras' || $currentName === 'guerra_detalle' ? 'active' : '' ?>">
             <span class="nav-icon"><i class="bi bi-lightning-fill"></i></span> Guerras
         </a>
-        <a href="cwl.php" class="nav-link <?= $currentPage === 'cwl.php' || $currentPage === 'cwl_detalle.php' ? 'active' : '' ?>">
+        <a href="cwl" class="nav-link <?= $currentName === 'cwl' || $currentName === 'cwl_detalle' ? 'active' : '' ?>">
             <span class="nav-icon"><i class="bi bi-trophy-fill"></i></span> Liga CWL
         </a>
-        <a href="juegos.php" class="nav-link <?= $currentPage === 'juegos.php' || $currentPage === 'juegos_detalle.php' ? 'active' : '' ?>">
+        <a href="juegos" class="nav-link <?= $currentName === 'juegos' || $currentName === 'juegos_detalle' ? 'active' : '' ?>">
             <span class="nav-icon"><i class="bi bi-controller"></i></span> Juegos del Clan
         </a>
-        <a href="donaciones.php" class="nav-link <?= $currentPage === 'donaciones.php' || $currentPage === 'donaciones_detalle.php' ? 'active' : '' ?>">
+        <a href="donaciones" class="nav-link <?= $currentName === 'donaciones' || $currentName === 'donaciones_detalle' ? 'active' : '' ?>">
             <span class="nav-icon"><i class="bi bi-gift-fill"></i></span> Donaciones
         </a>
-        <a href="capital.php" class="nav-link <?= $currentPage === 'capital.php' || $currentPage === 'capital_detalle.php' ? 'active' : '' ?>">
+        <a href="capital" class="nav-link <?= $currentName === 'capital' || $currentName === 'capital_detalle' ? 'active' : '' ?>">
             <span class="nav-icon"><i class="bi bi-building-fill"></i></span> Capital de Clan
         </a>
 
         <?php if ($user && $user['rol'] === 'admin'): ?>
             <hr class="my-2 border-secondary">
-            <a href="usuarios.php" class="nav-link <?= $currentPage === 'usuarios.php' ? 'active' : '' ?>">
+            <a href="usuarios" class="nav-link <?= $currentName === 'usuarios' ? 'active' : '' ?>">
                 <span class="nav-icon"><i class="bi bi-shield-lock-fill"></i></span> Usuarios
             </a>
-            <a href="log.php" class="nav-link <?= $currentPage === 'log.php' ? 'active' : '' ?>">
+            <a href="log" class="nav-link <?= $currentName === 'log' ? 'active' : '' ?>">
                 <span class="nav-icon"><i class="bi bi-journal-text"></i></span> Log de Actividad
             </a>
         <?php endif; ?>
@@ -82,7 +83,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
         <?php if ($user): ?>
             <div class="user-name"><?= clean($user['nombre']) ?></div>
             <div class="user-role"><?= clean($user['rol']) ?></div>
-            <a href="logout.php" class="btn btn-sm btn-outline-primary mt-2 w-100">
+            <a href="logout" class="btn btn-sm btn-outline-primary mt-2 w-100">
                 <i class="bi bi-box-arrow-left"></i> Cerrar sesión
             </a>
         <?php endif; ?>

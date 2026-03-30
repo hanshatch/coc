@@ -72,7 +72,7 @@ require __DIR__ . '/includes/header.php';
             </div>
             <div class="col-auto">
                 <button type="submit" class="btn btn-outline-primary btn-sm px-3"><i class="bi bi-filter"></i> Filtrar</button>
-                <a href="log.php" class="btn btn-outline-secondary btn-sm px-3">Limpiar</a>
+                <a href="log" class="btn btn-outline-secondary btn-sm px-3">Limpiar</a>
             </div>
         </form>
     </div>

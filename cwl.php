@@ -19,7 +19,7 @@ if ($action === 'delete' && isset($_GET['id'])) {
         logActivity('eliminar', 'cwl_temporadas', $id, 'CWL ' . $t['mes']);
         setFlash('success', 'Temporada CWL eliminada.');
     }
-    header('Location: cwl.php');
+    header('Location: cwl');
     exit;
 }
 
@@ -34,7 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($mes === '') {
         setFlash('error', 'El mes es obligatorio.');
-        header('Location: cwl.php?action=' . ($id ? 'edit&id=' . $id : 'create'));
+        header('Location: cwl?action=' . ($id ? 'edit&id=' . $id : 'create'));
         exit;
     }
 
@@ -49,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         logActivity('crear', 'cwl_temporadas', (int) $db->lastInsertId(), 'CWL ' . $mes);
         setFlash('success', 'Temporada CWL creada.');
     }
-    header('Location: cwl.php');
+    header('Location: cwl');
     exit;
 }
 
@@ -60,7 +60,7 @@ if ($action === 'create' || $action === 'edit') {
         $stmt = $db->prepare('SELECT * FROM cwl_temporadas WHERE id = ?');
         $stmt->execute([(int) $_GET['id']]);
         $temp = $stmt->fetch();
-        if (!$temp) { setFlash('error', 'No encontrada.'); header('Location: cwl.php'); exit; }
+        if (!$temp) { setFlash('error', 'No encontrada.'); header('Location: cwl'); exit; }
         $pageTitle = 'Editar CWL';
     } else {
         $pageTitle = 'Nueva Temporada CWL';
@@ -70,7 +70,7 @@ if ($action === 'create' || $action === 'edit') {
     ?>
     <div class="ct-page-header">
         <h1><i class="bi bi-trophy-fill"></i> <?= clean($pageTitle) ?></h1>
-        <a href="cwl.php" class="btn btn-secondary btn-sm"><i class="bi bi-arrow-left"></i> Volver</a>
+        <a href="cwl" class="btn btn-secondary btn-sm"><i class="bi bi-arrow-left"></i> Volver</a>
     </div>
     <div class="card"><div class="card-body">
         <form method="POST">
@@ -103,7 +103,7 @@ if ($action === 'create' || $action === 'edit') {
             </div>
             <div class="mt-4">
                 <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Guardar</button>
-                <a href="cwl.php" class="btn btn-secondary ms-2">Cancelar</a>
+                <a href="cwl" class="btn btn-secondary ms-2">Cancelar</a>
             </div>
         </form>
     </div></div>
@@ -122,7 +122,7 @@ require __DIR__ . '/includes/header.php';
 
 <div class="ct-page-header">
     <h1><i class="bi bi-trophy-fill"></i> Liga CWL</h1>
-    <a href="cwl.php?action=create" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg"></i> Nueva Temporada</a>
+    <a href="cwl?action=create" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg"></i> Nueva Temporada</a>
 </div>
 
 <?php if (empty($temps)): ?>
@@ -139,9 +139,9 @@ require __DIR__ . '/includes/header.php';
                     <td class="text-center"><?= $t['posicion_final'] ? $t['posicion_final'] . '°' : '—' ?></td>
                     <td class="text-center"><?= (int) $t['participantes'] ?></td>
                     <td class="text-end">
-                        <a href="cwl_detalle.php?id=<?= $t['id'] ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a>
-                        <a href="cwl.php?action=edit&id=<?= $t['id'] ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
-                        <a href="cwl.php?action=delete&id=<?= $t['id'] ?>&csrf_token=<?= csrfToken() ?>" class="btn btn-sm btn-danger"
+                        <a href="cwl_detalle?id=<?= $t['id'] ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a>
+                        <a href="cwl?action=edit&id=<?= $t['id'] ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
+                        <a href="cwl?action=delete&id=<?= $t['id'] ?>&csrf_token=<?= csrfToken() ?>" class="btn btn-sm btn-danger"
                            data-confirm="¿Eliminar temporada CWL <?= clean($t['mes']) ?>?"><i class="bi bi-trash"></i></a>
                     </td>
                 </tr>

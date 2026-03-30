@@ -14,7 +14,7 @@ if ($action === 'delete' && isset($_GET['id'])) {
     $db->prepare('DELETE FROM juegos_clan WHERE id = ?')->execute([$id]);
     logActivity('eliminar', 'juegos_clan', $id, 'Juegos eliminados');
     setFlash('success', 'Juegos del clan eliminados.');
-    header('Location: juegos.php'); exit;
+    header('Location: juegos'); exit;
 }
 
 // ── GUARDAR ───────────────────────────────────────────────────
@@ -28,7 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($fecha_inicio === '' || $fecha_fin === '') {
         setFlash('error', 'Las fechas son obligatorias.');
-        header('Location: juegos.php?action=' . ($id ? 'edit&id=' . $id : 'create')); exit;
+        header('Location: juegos?action=' . ($id ? 'edit&id=' . $id : 'create')); exit;
     }
 
     if ($id > 0) {
@@ -42,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         logActivity('crear', 'juegos_clan', (int) $db->lastInsertId());
         setFlash('success', 'Juegos del clan creados.');
     }
-    header('Location: juegos.php'); exit;
+    header('Location: juegos'); exit;
 }
 
 // ── FORMULARIO ────────────────────────────────────────────────
@@ -52,7 +52,7 @@ if ($action === 'create' || $action === 'edit') {
         $stmt = $db->prepare('SELECT * FROM juegos_clan WHERE id = ?');
         $stmt->execute([(int) $_GET['id']]);
         $juego = $stmt->fetch();
-        if (!$juego) { setFlash('error', 'No encontrado.'); header('Location: juegos.php'); exit; }
+        if (!$juego) { setFlash('error', 'No encontrado.'); header('Location: juegos'); exit; }
         $pageTitle = 'Editar Juegos del Clan';
     } else {
         $pageTitle = 'Nuevos Juegos del Clan';
@@ -62,7 +62,7 @@ if ($action === 'create' || $action === 'edit') {
     ?>
     <div class="ct-page-header">
         <h1><i class="bi bi-controller"></i> <?= clean($pageTitle) ?></h1>
-        <a href="juegos.php" class="btn btn-secondary btn-sm"><i class="bi bi-arrow-left"></i> Volver</a>
+        <a href="juegos" class="btn btn-secondary btn-sm"><i class="bi bi-arrow-left"></i> Volver</a>
     </div>
     <div class="card"><div class="card-body">
         <form method="POST">
@@ -91,7 +91,7 @@ if ($action === 'create' || $action === 'edit') {
             </div>
             <div class="mt-4">
                 <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Guardar</button>
-                <a href="juegos.php" class="btn btn-secondary ms-2">Cancelar</a>
+                <a href="juegos" class="btn btn-secondary ms-2">Cancelar</a>
             </div>
         </form>
     </div></div>
@@ -112,7 +112,7 @@ require __DIR__ . '/includes/header.php';
 
 <div class="ct-page-header">
     <h1><i class="bi bi-controller"></i> Juegos del Clan</h1>
-    <a href="juegos.php?action=create" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg"></i> Nuevos Juegos</a>
+    <a href="juegos?action=create" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg"></i> Nuevos Juegos</a>
 </div>
 
 <?php if (empty($juegos)): ?>
@@ -143,9 +143,9 @@ require __DIR__ . '/includes/header.php';
                         <?php endif; ?>
                     </td>
                     <td class="text-end">
-                        <a href="juegos_detalle.php?id=<?= $j['id'] ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a>
-                        <a href="juegos.php?action=edit&id=<?= $j['id'] ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
-                        <a href="juegos.php?action=delete&id=<?= $j['id'] ?>&csrf_token=<?= csrfToken() ?>" class="btn btn-sm btn-danger"
+                        <a href="juegos_detalle?id=<?= $j['id'] ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a>
+                        <a href="juegos?action=edit&id=<?= $j['id'] ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
+                        <a href="juegos?action=delete&id=<?= $j['id'] ?>&csrf_token=<?= csrfToken() ?>" class="btn btn-sm btn-danger"
                            data-confirm="¿Eliminar estos juegos del clan?"><i class="bi bi-trash"></i></a>
                     </td>
                 </tr>

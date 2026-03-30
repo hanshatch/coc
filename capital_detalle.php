@@ -6,12 +6,12 @@ requireLogin();
 
 $db = getDB();
 $id = (int) ($_GET['id'] ?? 0);
-if ($id <= 0) { header('Location: capital.php'); exit; }
+if ($id <= 0) { header('Location: capital'); exit; }
 
 $stmt = $db->prepare('SELECT * FROM capital_semanas WHERE id = ?');
 $stmt->execute([$id]);
 $semana = $stmt->fetch();
-if (!$semana) { setFlash('error', 'No encontrada.'); header('Location: capital.php'); exit; }
+if (!$semana) { setFlash('error', 'No encontrada.'); header('Location: capital'); exit; }
 
 // ── Agregar jugadores ─────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_players'])) {
@@ -23,7 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_players'])) {
         logActivity('crear', 'capital_participaciones', $id, 'Agregados ' . count($playerIds) . ' jugadores');
         setFlash('success', count($playerIds) . ' jugador(es) agregado(s).');
     }
-    header('Location: capital_detalle.php?id=' . $id); exit;
+    header('Location: capital_detalle?id=' . $id); exit;
 }
 
 // ── Guardar participaciones ───────────────────────────────────
@@ -51,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_participation'])
 
     logActivity('editar', 'capital_participaciones', $id, "Oro total: $totalOro");
     setFlash('success', 'Participaciones de capital guardadas.');
-    header('Location: capital_detalle.php?id=' . $id); exit;
+    header('Location: capital_detalle?id=' . $id); exit;
 }
 
 // ── Datos ─────────────────────────────────────────────────────
@@ -79,7 +79,7 @@ require __DIR__ . '/includes/header.php';
 
 <div class="ct-page-header">
     <h1><i class="bi bi-building-fill"></i> Semana de Raid</h1>
-    <a href="capital.php" class="btn btn-secondary btn-sm"><i class="bi bi-arrow-left"></i> Volver</a>
+    <a href="capital" class="btn btn-secondary btn-sm"><i class="bi bi-arrow-left"></i> Volver</a>
 </div>
 
 <div class="row g-3 mb-4">

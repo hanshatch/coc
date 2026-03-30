@@ -6,12 +6,12 @@ requireLogin();
 
 $db = getDB();
 $id = (int) ($_GET['id'] ?? 0);
-if ($id <= 0) { header('Location: juegos.php'); exit; }
+if ($id <= 0) { header('Location: juegos'); exit; }
 
 $stmt = $db->prepare('SELECT * FROM juegos_clan WHERE id = ?');
 $stmt->execute([$id]);
 $juego = $stmt->fetch();
-if (!$juego) { setFlash('error', 'No encontrado.'); header('Location: juegos.php'); exit; }
+if (!$juego) { setFlash('error', 'No encontrado.'); header('Location: juegos'); exit; }
 
 // ── Agregar jugadores ─────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_players'])) {
@@ -23,7 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_players'])) {
         logActivity('crear', 'juegos_participaciones', $id, 'Agregados ' . count($playerIds) . ' jugadores');
         setFlash('success', count($playerIds) . ' jugador(es) agregado(s).');
     }
-    header('Location: juegos_detalle.php?id=' . $id); exit;
+    header('Location: juegos_detalle?id=' . $id); exit;
 }
 
 // ── Guardar participaciones ───────────────────────────────────
@@ -51,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_participation'])
 
     logActivity('editar', 'juegos_participaciones', $id, "Puntos totales: $totalPuntos");
     setFlash('success', 'Participaciones guardadas.');
-    header('Location: juegos_detalle.php?id=' . $id); exit;
+    header('Location: juegos_detalle?id=' . $id); exit;
 }
 
 // ── Datos ─────────────────────────────────────────────────────
@@ -83,7 +83,7 @@ require __DIR__ . '/includes/header.php';
 
 <div class="ct-page-header">
     <h1><i class="bi bi-controller"></i> Juegos del Clan</h1>
-    <a href="juegos.php" class="btn btn-secondary btn-sm"><i class="bi bi-arrow-left"></i> Volver</a>
+    <a href="juegos" class="btn btn-secondary btn-sm"><i class="bi bi-arrow-left"></i> Volver</a>
 </div>
 
 <div class="row g-3 mb-4">

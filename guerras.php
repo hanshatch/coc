@@ -20,7 +20,7 @@ if ($action === 'delete' && isset($_GET['id'])) {
         logActivity('eliminar', 'guerras', $id, 'Guerra vs ' . $g['oponente']);
         setFlash('success', 'Guerra eliminada.');
     }
-    header('Location: guerras.php');
+    header('Location: guerras');
     exit;
 }
 
@@ -38,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($fecha === '' || $oponente === '') {
         setFlash('error', 'Fecha y oponente son obligatorios.');
-        header('Location: guerras.php?action=' . ($id ? 'edit&id=' . $id : 'create'));
+        header('Location: guerras?action=' . ($id ? 'edit&id=' . $id : 'create'));
         exit;
     }
 
@@ -60,7 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         setFlash('success', 'Guerra registrada.');
     }
 
-    header('Location: guerras.php');
+    header('Location: guerras');
     exit;
 }
 
@@ -75,7 +75,7 @@ if ($action === 'create' || $action === 'edit') {
         $guerra = $stmt->fetch();
         if (!$guerra) {
             setFlash('error', 'Guerra no encontrada.');
-            header('Location: guerras.php');
+            header('Location: guerras');
             exit;
         }
         $pageTitle = 'Editar Guerra';
@@ -88,7 +88,7 @@ if ($action === 'create' || $action === 'edit') {
 
     <div class="ct-page-header">
         <h1><i class="bi bi-lightning-fill"></i> <?= clean($pageTitle) ?></h1>
-        <a href="guerras.php" class="btn btn-secondary btn-sm"><i class="bi bi-arrow-left"></i> Volver</a>
+        <a href="guerras" class="btn btn-secondary btn-sm"><i class="bi bi-arrow-left"></i> Volver</a>
     </div>
 
     <div class="card">
@@ -136,7 +136,7 @@ if ($action === 'create' || $action === 'edit') {
 
                 <div class="mt-4">
                     <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Guardar</button>
-                    <a href="guerras.php" class="btn btn-secondary ms-2">Cancelar</a>
+                    <a href="guerras" class="btn btn-secondary ms-2">Cancelar</a>
                 </div>
             </form>
         </div>
@@ -165,7 +165,7 @@ require __DIR__ . '/includes/header.php';
 
 <div class="ct-page-header">
     <h1><i class="bi bi-lightning-fill"></i> Guerras</h1>
-    <a href="guerras.php?action=create" class="btn btn-primary btn-sm">
+    <a href="guerras?action=create" class="btn btn-primary btn-sm">
         <i class="bi bi-plus-lg"></i> Nueva Guerra
     </a>
 </div>
@@ -174,7 +174,7 @@ require __DIR__ . '/includes/header.php';
     <div class="empty-state">
         <div class="empty-icon">⚔️</div>
         <p>No hay guerras registradas.</p>
-        <a href="guerras.php?action=create" class="btn btn-primary btn-sm">Registrar primera guerra</a>
+        <a href="guerras?action=create" class="btn btn-primary btn-sm">Registrar primera guerra</a>
     </div>
 <?php else: ?>
     <div class="card">
@@ -205,13 +205,13 @@ require __DIR__ . '/includes/header.php';
                             <td class="text-center"><?= (int) $g['estrellas_oponente'] ?></td>
                             <td class="text-center"><?= (int) $g['participantes'] ?></td>
                             <td class="text-end">
-                                <a href="guerra_detalle.php?id=<?= $g['id'] ?>" class="btn btn-sm btn-outline-primary" title="Detalle">
+                                <a href="guerra_detalle?id=<?= $g['id'] ?>" class="btn btn-sm btn-outline-primary" title="Detalle">
                                     <i class="bi bi-eye"></i>
                                 </a>
-                                <a href="guerras.php?action=edit&id=<?= $g['id'] ?>" class="btn btn-sm btn-outline-primary" title="Editar">
+                                <a href="guerras?action=edit&id=<?= $g['id'] ?>" class="btn btn-sm btn-outline-primary" title="Editar">
                                     <i class="bi bi-pencil"></i>
                                 </a>
-                                <a href="guerras.php?action=delete&id=<?= $g['id'] ?>&csrf_token=<?= csrfToken() ?>"
+                                <a href="guerras?action=delete&id=<?= $g['id'] ?>&csrf_token=<?= csrfToken() ?>"
                                    class="btn btn-sm btn-danger" title="Eliminar"
                                    data-confirm="¿Eliminar guerra vs <?= clean($g['oponente']) ?>?">
                                     <i class="bi bi-trash"></i>

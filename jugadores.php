@@ -20,7 +20,7 @@ if ($action === 'delete' && isset($_GET['id'])) {
         logActivity('eliminar', 'jugadores', $id, 'Jugador: ' . $j['nombre']);
         setFlash('success', 'Jugador eliminado correctamente.');
     }
-    header('Location: jugadores.php');
+    header('Location: jugadores');
     exit;
 }
 
@@ -45,7 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($tag === '' || $nombre === '') {
         setFlash('error', 'Tag y nombre son obligatorios.');
-        header('Location: jugadores.php?action=' . ($id ? 'edit&id=' . $id : 'create'));
+        header('Location: jugadores?action=' . ($id ? 'edit&id=' . $id : 'create'));
         exit;
     }
 
@@ -70,7 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         setFlash('success', 'Jugador registrado.');
     }
 
-    header('Location: jugadores.php');
+    header('Location: jugadores');
     exit;
 }
 
@@ -85,7 +85,7 @@ if ($action === 'create' || $action === 'edit') {
         $jugador = $stmt->fetch();
         if (!$jugador) {
             setFlash('error', 'Jugador no encontrado.');
-            header('Location: jugadores.php');
+            header('Location: jugadores');
             exit;
         }
         $pageTitle = 'Editar Jugador';
@@ -98,7 +98,7 @@ if ($action === 'create' || $action === 'edit') {
 
     <div class="ct-page-header">
         <h1><i class="bi bi-person-plus-fill"></i> <?= clean($pageTitle) ?></h1>
-        <a href="jugadores.php" class="btn btn-secondary btn-sm"><i class="bi bi-arrow-left"></i> Volver</a>
+        <a href="jugadores" class="btn btn-secondary btn-sm"><i class="bi bi-arrow-left"></i> Volver</a>
     </div>
 
     <div class="card">
@@ -163,7 +163,7 @@ if ($action === 'create' || $action === 'edit') {
 
                 <div class="mt-4">
                     <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Guardar</button>
-                    <a href="jugadores.php" class="btn btn-secondary ms-2">Cancelar</a>
+                    <a href="jugadores" class="btn btn-secondary ms-2">Cancelar</a>
                 </div>
             </form>
         </div>
@@ -210,7 +210,7 @@ require __DIR__ . '/includes/header.php';
 
 <div class="ct-page-header">
     <h1><i class="bi bi-people-fill"></i> Jugadores</h1>
-    <a href="jugadores.php?action=create" class="btn btn-primary btn-sm">
+    <a href="jugadores?action=create" class="btn btn-primary btn-sm">
         <i class="bi bi-plus-lg"></i> Nuevo Jugador
     </a>
 </div>
@@ -241,7 +241,7 @@ require __DIR__ . '/includes/header.php';
     <div class="empty-state">
         <div class="empty-icon">🏰</div>
         <p>No hay jugadores registrados.</p>
-        <a href="jugadores.php?action=create" class="btn btn-primary btn-sm">Agregar primer jugador</a>
+        <a href="jugadores?action=create" class="btn btn-primary btn-sm">Agregar primer jugador</a>
     </div>
 <?php else: ?>
     <div class="card">
@@ -276,10 +276,10 @@ require __DIR__ . '/includes/header.php';
                                 <?php endif; ?>
                             </td>
                             <td class="text-end">
-                                <a href="jugadores.php?action=edit&id=<?= $j['id'] ?>" class="btn btn-sm btn-outline-primary" title="Editar">
+                                <a href="jugadores?action=edit&id=<?= $j['id'] ?>" class="btn btn-sm btn-outline-primary" title="Editar">
                                     <i class="bi bi-pencil"></i>
                                 </a>
-                                <a href="jugadores.php?action=delete&id=<?= $j['id'] ?>&csrf_token=<?= csrfToken() ?>"
+                                <a href="jugadores?action=delete&id=<?= $j['id'] ?>&csrf_token=<?= csrfToken() ?>"
                                    class="btn btn-sm btn-danger" title="Eliminar"
                                    data-confirm="¿Eliminar a <?= clean($j['nombre']) ?>? Esto borrará todas sus participaciones.">
                                     <i class="bi bi-trash"></i>

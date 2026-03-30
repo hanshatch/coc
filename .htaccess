@@ -1,7 +1,14 @@
 RewriteEngine On
-# Redirigir la raíz a la carpeta clash-tracker
-RewriteRule ^$ clash-tracker/ [L,R=301]
 
-# Si quieres que funcione de forma transparente (sin que cambie la URL):
-# RewriteCond %{REQUEST_URI} !^/clash-tracker/
-# RewriteRule ^(.*)$ clash-tracker/$1 [L]
+# Evitar que se vea la extensión .php en la URL (si alguien entra a /ejemplo.php lo mandamos a /ejemplo)
+RewriteCond %{THE_REQUEST} ^[A-Z]{3,}\s([^.]+)\.php [NC]
+RewriteRule ^ %1 [R=301,L]
+
+# Si el archivo .php existe, lo servimos sin la extensión requerida
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_FILENAME}.php -f
+RewriteRule ^(.*)$ $1.php [L]
+
+# Configurar index.php como página principal silenciosa si no cargamos nada
+# (Apache lo suele hacer solo si DirectoryIndex está bien, pero esto asegura)
+# DirectoryIndex index.php

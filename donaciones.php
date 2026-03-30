@@ -12,7 +12,7 @@ if ($action === 'delete' && isset($_GET['id'])) {
     $db->prepare('DELETE FROM donaciones_periodos WHERE id = ?')->execute([(int) $_GET['id']]);
     logActivity('eliminar', 'donaciones_periodos', (int) $_GET['id']);
     setFlash('success', 'Periodo eliminado.');
-    header('Location: donaciones.php'); exit;
+    header('Location: donaciones'); exit;
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -25,7 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($fecha_inicio === '' || $fecha_fin === '') {
         setFlash('error', 'Las fechas son obligatorias.');
-        header('Location: donaciones.php?action=' . ($id ? 'edit&id=' . $id : 'create')); exit;
+        header('Location: donaciones?action=' . ($id ? 'edit&id=' . $id : 'create')); exit;
     }
 
     if ($id > 0) {
@@ -39,7 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         logActivity('crear', 'donaciones_periodos', (int) $db->lastInsertId());
         setFlash('success', 'Periodo creado.');
     }
-    header('Location: donaciones.php'); exit;
+    header('Location: donaciones'); exit;
 }
 
 if ($action === 'create' || $action === 'edit') {
@@ -48,7 +48,7 @@ if ($action === 'create' || $action === 'edit') {
         $stmt = $db->prepare('SELECT * FROM donaciones_periodos WHERE id = ?');
         $stmt->execute([(int) $_GET['id']]);
         $periodo = $stmt->fetch();
-        if (!$periodo) { setFlash('error', 'No encontrado.'); header('Location: donaciones.php'); exit; }
+        if (!$periodo) { setFlash('error', 'No encontrado.'); header('Location: donaciones'); exit; }
         $pageTitle = 'Editar Periodo';
     } else {
         $pageTitle = 'Nuevo Periodo de Donaciones';
@@ -57,7 +57,7 @@ if ($action === 'create' || $action === 'edit') {
     ?>
     <div class="ct-page-header">
         <h1><i class="bi bi-gift-fill"></i> <?= clean($pageTitle) ?></h1>
-        <a href="donaciones.php" class="btn btn-secondary btn-sm"><i class="bi bi-arrow-left"></i> Volver</a>
+        <a href="donaciones" class="btn btn-secondary btn-sm"><i class="bi bi-arrow-left"></i> Volver</a>
     </div>
     <div class="card"><div class="card-body">
         <form method="POST">
@@ -88,7 +88,7 @@ if ($action === 'create' || $action === 'edit') {
             </div>
             <div class="mt-4">
                 <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Guardar</button>
-                <a href="donaciones.php" class="btn btn-secondary ms-2">Cancelar</a>
+                <a href="donaciones" class="btn btn-secondary ms-2">Cancelar</a>
             </div>
         </form>
     </div></div>
@@ -108,7 +108,7 @@ require __DIR__ . '/includes/header.php';
 ?>
 <div class="ct-page-header">
     <h1><i class="bi bi-gift-fill"></i> Donaciones</h1>
-    <a href="donaciones.php?action=create" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg"></i> Nuevo Periodo</a>
+    <a href="donaciones?action=create" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg"></i> Nuevo Periodo</a>
 </div>
 
 <?php if (empty($periodos)): ?>
@@ -125,9 +125,9 @@ require __DIR__ . '/includes/header.php';
                     <td class="text-center"><strong><?= number_format($p['total_donadas']) ?></strong></td>
                     <td class="text-center"><?= (int) $p['participantes'] ?></td>
                     <td class="text-end">
-                        <a href="donaciones_detalle.php?id=<?= $p['id'] ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a>
-                        <a href="donaciones.php?action=edit&id=<?= $p['id'] ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
-                        <a href="donaciones.php?action=delete&id=<?= $p['id'] ?>&csrf_token=<?= csrfToken() ?>" class="btn btn-sm btn-danger"
+                        <a href="donaciones_detalle?id=<?= $p['id'] ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a>
+                        <a href="donaciones?action=edit&id=<?= $p['id'] ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
+                        <a href="donaciones?action=delete&id=<?= $p['id'] ?>&csrf_token=<?= csrfToken() ?>" class="btn btn-sm btn-danger"
                            data-confirm="¿Eliminar este periodo?"><i class="bi bi-trash"></i></a>
                     </td>
                 </tr>

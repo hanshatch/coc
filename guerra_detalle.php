@@ -8,7 +8,7 @@ $db = getDB();
 $id = (int) ($_GET['id'] ?? 0);
 
 if ($id <= 0) {
-    header('Location: guerras.php');
+    header('Location: guerras');
     exit;
 }
 
@@ -19,7 +19,7 @@ $guerra = $stmt->fetch();
 
 if (!$guerra) {
     setFlash('error', 'Guerra no encontrada.');
-    header('Location: guerras.php');
+    header('Location: guerras');
     exit;
 }
 
@@ -38,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_players'])) {
         logActivity('crear', 'guerra_participaciones', $id, 'Agregados ' . count($playerIds) . ' jugadores');
         setFlash('success', count($playerIds) . ' jugador(es) agregado(s).');
     }
-    header('Location: guerra_detalle.php?id=' . $id);
+    header('Location: guerra_detalle?id=' . $id);
     exit;
 }
 
@@ -75,7 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_participation'])
 
     logActivity('editar', 'guerra_participaciones', $id, 'Participaciones actualizadas');
     setFlash('success', 'Participaciones guardadas.');
-    header('Location: guerra_detalle.php?id=' . $id);
+    header('Location: guerra_detalle?id=' . $id);
     exit;
 }
 
@@ -87,7 +87,7 @@ if (isset($_GET['remove']) && isset($_GET['csrf_token'])) {
        ->execute([$id, $removeId]);
     logActivity('eliminar', 'guerra_participaciones', $id, 'Jugador removido: ' . $removeId);
     setFlash('success', 'Jugador removido de la guerra.');
-    header('Location: guerra_detalle.php?id=' . $id);
+    header('Location: guerra_detalle?id=' . $id);
     exit;
 }
 
@@ -134,7 +134,7 @@ require __DIR__ . '/includes/header.php';
 
 <div class="ct-page-header">
     <h1><i class="bi bi-lightning-fill"></i> <?= clean($pageTitle) ?></h1>
-    <a href="guerras.php" class="btn btn-secondary btn-sm"><i class="bi bi-arrow-left"></i> Volver</a>
+    <a href="guerras" class="btn btn-secondary btn-sm"><i class="bi bi-arrow-left"></i> Volver</a>
 </div>
 
 <!-- Header de la guerra -->
@@ -224,7 +224,7 @@ require __DIR__ . '/includes/header.php';
                     <div class="participation-card">
                         <div class="player-name d-flex justify-content-between align-items-center">
                             <span><?= clean($p['nombre']) ?> <small class="text-muted"><?= clean($p['tag']) ?></small></span>
-                            <a href="guerra_detalle.php?id=<?= $id ?>&remove=<?= $p['jugador_id'] ?>&csrf_token=<?= csrfToken() ?>"
+                            <a href="guerra_detalle?id=<?= $id ?>&remove=<?= $p['jugador_id'] ?>&csrf_token=<?= csrfToken() ?>"
                                class="btn btn-sm btn-danger py-0 px-1" title="Remover"
                                data-confirm="¿Remover a <?= clean($p['nombre']) ?>?">
                                 <i class="bi bi-x"></i>

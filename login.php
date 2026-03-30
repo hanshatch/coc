@@ -9,7 +9,7 @@ require_once __DIR__ . '/includes/auth.php';
 
 // Ya logueado → dashboard
 if (isLoggedIn()) {
-    header('Location: index.php');
+    header('Location: index');
     exit;
 }
 
@@ -23,7 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($username === '' || $password === '') {
         $error = 'Completa todos los campos.';
     } elseif (login($username, $password)) {
-        header('Location: index.php');
+        header('Location: index');
         exit;
     } else {
         $error = 'Credenciales incorrectas.';

@@ -12,7 +12,7 @@ if ($action === 'delete' && isset($_GET['id'])) {
     $db->prepare('DELETE FROM capital_semanas WHERE id = ?')->execute([(int) $_GET['id']]);
     logActivity('eliminar', 'capital_semanas', (int) $_GET['id']);
     setFlash('success', 'Semana de capital eliminada.');
-    header('Location: capital.php'); exit;
+    header('Location: capital'); exit;
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -27,7 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($fecha_inicio === '' || $fecha_fin === '') {
         setFlash('error', 'Las fechas son obligatorias.');
-        header('Location: capital.php?action=' . ($id ? 'edit&id=' . $id : 'create')); exit;
+        header('Location: capital?action=' . ($id ? 'edit&id=' . $id : 'create')); exit;
     }
 
     if ($id > 0) {
@@ -41,7 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         logActivity('crear', 'capital_semanas', (int) $db->lastInsertId());
         setFlash('success', 'Semana de capital creada.');
     }
-    header('Location: capital.php'); exit;
+    header('Location: capital'); exit;
 }
 
 if ($action === 'create' || $action === 'edit') {
@@ -50,7 +50,7 @@ if ($action === 'create' || $action === 'edit') {
         $stmt = $db->prepare('SELECT * FROM capital_semanas WHERE id = ?');
         $stmt->execute([(int) $_GET['id']]);
         $semana = $stmt->fetch();
-        if (!$semana) { setFlash('error', 'No encontrada.'); header('Location: capital.php'); exit; }
+        if (!$semana) { setFlash('error', 'No encontrada.'); header('Location: capital'); exit; }
         $pageTitle = 'Editar Semana Capital';
     } else {
         $pageTitle = 'Nueva Semana de Raid';
@@ -59,7 +59,7 @@ if ($action === 'create' || $action === 'edit') {
     ?>
     <div class="ct-page-header">
         <h1><i class="bi bi-building-fill"></i> <?= clean($pageTitle) ?></h1>
-        <a href="capital.php" class="btn btn-secondary btn-sm"><i class="bi bi-arrow-left"></i> Volver</a>
+        <a href="capital" class="btn btn-secondary btn-sm"><i class="bi bi-arrow-left"></i> Volver</a>
     </div>
     <div class="card"><div class="card-body">
         <form method="POST">
@@ -98,7 +98,7 @@ if ($action === 'create' || $action === 'edit') {
             </div>
             <div class="mt-4">
                 <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Guardar</button>
-                <a href="capital.php" class="btn btn-secondary ms-2">Cancelar</a>
+                <a href="capital" class="btn btn-secondary ms-2">Cancelar</a>
             </div>
         </form>
     </div></div>
@@ -118,7 +118,7 @@ require __DIR__ . '/includes/header.php';
 ?>
 <div class="ct-page-header">
     <h1><i class="bi bi-building-fill"></i> Capital de Clan</h1>
-    <a href="capital.php?action=create" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg"></i> Nueva Semana de Raid</a>
+    <a href="capital?action=create" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg"></i> Nueva Semana de Raid</a>
 </div>
 
 <?php if (empty($semanas)): ?>
@@ -136,9 +136,9 @@ require __DIR__ . '/includes/header.php';
                     <td class="text-center"><?= (int) $s['distritos_destruidos'] ?></td>
                     <td class="text-center"><?= (int) $s['participantes'] ?></td>
                     <td class="text-end">
-                        <a href="capital_detalle.php?id=<?= $s['id'] ?>" class="btn btn-sm btn-outline-primary" title="Detalle"><i class="bi bi-eye"></i></a>
-                        <a href="capital.php?action=edit&id=<?= $s['id'] ?>" class="btn btn-sm btn-outline-primary" title="Editar"><i class="bi bi-pencil"></i></a>
-                        <a href="capital.php?action=delete&id=<?= $s['id'] ?>&csrf_token=<?= csrfToken() ?>" class="btn btn-sm btn-danger"
+                        <a href="capital_detalle?id=<?= $s['id'] ?>" class="btn btn-sm btn-outline-primary" title="Detalle"><i class="bi bi-eye"></i></a>
+                        <a href="capital?action=edit&id=<?= $s['id'] ?>" class="btn btn-sm btn-outline-primary" title="Editar"><i class="bi bi-pencil"></i></a>
+                        <a href="capital?action=delete&id=<?= $s['id'] ?>&csrf_token=<?= csrfToken() ?>" class="btn btn-sm btn-danger"
                            data-confirm="¿Eliminar esta semana de raid?"><i class="bi bi-trash"></i></a>
                     </td>
                 </tr>

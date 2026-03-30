@@ -94,7 +94,7 @@ require __DIR__ . '/includes/header.php';
         <div class="card h-100">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <span>Última Guerra</span>
-                <a href="guerras.php" class="btn btn-sm btn-outline-primary py-0">Ver todas</a>
+                <a href="guerras" class="btn btn-sm btn-outline-primary py-0">Ver todas</a>
             </div>
             <div class="card-body">
                 <?php if ($ultimaGuerra):
@@ -126,7 +126,7 @@ require __DIR__ . '/includes/header.php';
                     </div>
                     <div class="text-center">
                         <p class="mb-0 small text-muted"><?= (int) $ultimaGuerra['participantes'] ?> jugadores registrados</p>
-                        <a href="guerra_detalle.php?id=<?= $ultimaGuerra['id'] ?>" class="btn btn-sm btn-primary mt-2">Detalles</a>
+                        <a href="guerra_detalle?id=<?= $ultimaGuerra['id'] ?>" class="btn btn-sm btn-primary mt-2">Detalles</a>
                     </div>
                 <?php else: ?>
                     <div class="text-center py-4 text-muted">No hay guerras registradas.</div>
@@ -140,7 +140,7 @@ require __DIR__ . '/includes/header.php';
         <div class="card h-100">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <span>Top Donadores</span>
-                <a href="donaciones.php" class="btn btn-sm btn-outline-primary py-0">Donaciones</a>
+                <a href="donaciones" class="btn btn-sm btn-outline-primary py-0">Donaciones</a>
             </div>
             <div class="card-body p-0">
                 <?php if (empty($donadores)): ?>

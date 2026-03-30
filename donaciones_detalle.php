@@ -6,12 +6,12 @@ requireLogin();
 
 $db = getDB();
 $id = (int) ($_GET['id'] ?? 0);
-if ($id <= 0) { header('Location: donaciones.php'); exit; }
+if ($id <= 0) { header('Location: donaciones'); exit; }
 
 $stmt = $db->prepare('SELECT * FROM donaciones_periodos WHERE id = ?');
 $stmt->execute([$id]);
 $periodo = $stmt->fetch();
-if (!$periodo) { setFlash('error', 'Periodo no encontrado.'); header('Location: donaciones.php'); exit; }
+if (!$periodo) { setFlash('error', 'Periodo no encontrado.'); header('Location: donaciones'); exit; }
 
 // ── Agregar jugadores ─────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_players'])) {
@@ -23,7 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_players'])) {
         logActivity('crear', 'donaciones', $id, 'Agregados ' . count($playerIds) . ' jugadores');
         setFlash('success', count($playerIds) . ' jugador(es) agregado(s).');
     }
-    header('Location: donaciones_detalle.php?id=' . $id); exit;
+    header('Location: donaciones_detalle?id=' . $id); exit;
 }
 
 // ── Guardar participaciones ───────────────────────────────────
@@ -43,7 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_participation'])
 
     logActivity('editar', 'donaciones', $id, 'Donaciones actualizadas');
     setFlash('success', 'Registro de donaciones guardado.');
-    header('Location: donaciones_detalle.php?id=' . $id); exit;
+    header('Location: donaciones_detalle?id=' . $id); exit;
 }
 
 // ── Datos ─────────────────────────────────────────────────────
@@ -71,7 +71,7 @@ require __DIR__ . '/includes/header.php';
 
 <div class="ct-page-header">
     <h1><i class="bi bi-gift-fill"></i> Donaciones</h1>
-    <a href="donaciones.php" class="btn btn-secondary btn-sm"><i class="bi bi-arrow-left"></i> Volver</a>
+    <a href="donaciones" class="btn btn-secondary btn-sm"><i class="bi bi-arrow-left"></i> Volver</a>
 </div>
 
 <div class="row g-3 mb-4">
@@ -120,7 +120,7 @@ require __DIR__ . '/includes/header.php';
                         <td><input type="number" name="tropas_recibidas[<?= $p['jugador_id'] ?>]" class="form-control form-control-sm" min="0" value="<?= (int) $p['tropas_recibidas'] ?>" style="width:100px"></td>
                         <td><span style="color:<?= $ratioColor ?>;font-weight:600"><?= $ratio ?></span></td>
                         <td class="text-end">
-                            <a href="donaciones_detalle.php?id=<?= $id ?>&remove=<?= $p['jugador_id'] ?>&csrf_token=<?= csrfToken() ?>"
+                            <a href="donaciones_detalle?id=<?= $id ?>&remove=<?= $p['jugador_id'] ?>&csrf_token=<?= csrfToken() ?>"
                                class="btn btn-sm btn-danger py-0 px-1" title="Remover" data-confirm="¿Remover de este periodo?">
                                 <i class="bi bi-x"></i>
                             </a>

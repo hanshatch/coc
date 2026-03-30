@@ -17,7 +17,7 @@ if ($action === 'delete' && isset($_GET['id'])) {
         logActivity('eliminar', 'usuarios', $id);
         setFlash('success', 'Usuario eliminado.');
     }
-    header('Location: usuarios.php'); exit;
+    header('Location: usuarios'); exit;
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -31,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($username === '' || $nombre === '') {
         setFlash('error', 'Usuario y nombre son obligatorios.');
-        header('Location: usuarios.php?action=' . ($id ? 'edit&id=' . $id : 'create')); exit;
+        header('Location: usuarios?action=' . ($id ? 'edit&id=' . $id : 'create')); exit;
     }
 
     if ($id > 0) {
@@ -49,14 +49,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         if ($password === '') {
             setFlash('error', 'La contraseña es obligatoria para nuevos usuarios.');
-            header('Location: usuarios.php?action=create'); exit;
+            header('Location: usuarios?action=create'); exit;
         }
         $db->prepare('INSERT INTO usuarios (username, nombre, rol, activo, password_hash) VALUES (?, ?, ?, ?, ?)')
            ->execute([$username, $nombre, $rol, $activo, password_hash($password, PASSWORD_DEFAULT)]);
         logActivity('crear', 'usuarios', (int) $db->lastInsertId(), 'Usuario: ' . $username);
         setFlash('success', 'Usuario creado.');
     }
-    header('Location: usuarios.php'); exit;
+    header('Location: usuarios'); exit;
 }
 
 if ($action === 'create' || $action === 'edit') {
@@ -70,7 +70,7 @@ if ($action === 'create' || $action === 'edit') {
     ?>
     <div class="ct-page-header">
         <h1><i class="bi bi-shield-lock-fill"></i> <?= $u ? 'Editar Usuario' : 'Nuevo Usuario' ?></h1>
-        <a href="usuarios.php" class="btn btn-secondary btn-sm"><i class="bi bi-arrow-left"></i> Volver</a>
+        <a href="usuarios" class="btn btn-secondary btn-sm"><i class="bi bi-arrow-left"></i> Volver</a>
     </div>
     <div class="card"><div class="card-body">
         <form method="POST">
@@ -99,7 +99,7 @@ if ($action === 'create' || $action === 'edit') {
 $usuariosArr = $db->query('SELECT * FROM usuarios ORDER BY username ASC')->fetchAll();
 require __DIR__ . '/includes/header.php';
 ?>
-<div class="ct-page-header"><h1><i class="bi bi-shield-lock-fill"></i> Gestión de Usuarios</h1><a href="usuarios.php?action=create" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg"></i> Nuevo Usuario</a></div>
+<div class="ct-page-header"><h1><i class="bi bi-shield-lock-fill"></i> Gestión de Usuarios</h1><a href="usuarios?action=create" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg"></i> Nuevo Usuario</a></div>
 <div class="card"><div class="table-responsive">
     <table class="table table-hover mb-0">
         <thead><tr><th>Usuario</th><th>Nombre</th><th>Rol</th><th>Estado</th><th class="text-end">Acciones</th></tr></thead>
@@ -111,9 +111,9 @@ require __DIR__ . '/includes/header.php';
                 <td><span class="badge <?= $u['rol'] === 'admin' ? 'badge-gold' : 'badge-blue' ?>"><?= $u['rol'] ?></span></td>
                 <td><span class="badge <?= $u['activo'] ? 'badge-green' : 'badge-red' ?>"><?= $u['activo'] ? 'Activo' : 'Inactivo' ?></span></td>
                 <td class="text-end">
-                    <a href="usuarios.php?action=edit&id=<?= $u['id'] ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
+                    <a href="usuarios?action=edit&id=<?= $u['id'] ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
                     <?php if ($u['id'] !== currentUser()['id']): ?>
-                        <a href="usuarios.php?action=delete&id=<?= $u['id'] ?>&csrf_token=<?= csrfToken() ?>" class="btn btn-sm btn-danger" data-confirm="¿Eliminar este usuario?"><i class="bi bi-trash"></i></a>
+                        <a href="usuarios?action=delete&id=<?= $u['id'] ?>&csrf_token=<?= csrfToken() ?>" class="btn btn-sm btn-danger" data-confirm="¿Eliminar este usuario?"><i class="bi bi-trash"></i></a>
                     <?php endif; ?>
                 </td>
             </tr>

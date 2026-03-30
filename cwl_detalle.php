@@ -6,12 +6,12 @@ requireLogin();
 
 $db = getDB();
 $id = (int) ($_GET['id'] ?? 0);
-if ($id <= 0) { header('Location: cwl.php'); exit; }
+if ($id <= 0) { header('Location: cwl'); exit; }
 
 $stmt = $db->prepare('SELECT * FROM cwl_temporadas WHERE id = ?');
 $stmt->execute([$id]);
 $temp = $stmt->fetch();
-if (!$temp) { setFlash('error', 'Temporada no encontrada.'); header('Location: cwl.php'); exit; }
+if (!$temp) { setFlash('error', 'Temporada no encontrada.'); header('Location: cwl'); exit; }
 
 // ── Agregar jugadores ─────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_players'])) {
@@ -27,7 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_players'])) {
         logActivity('crear', 'cwl_participaciones', $id, 'Agregados ' . count($playerIds) . ' jugadores');
         setFlash('success', count($playerIds) . ' jugador(es) agregado(s) al roster.');
     }
-    header('Location: cwl_detalle.php?id=' . $id); exit;
+    header('Location: cwl_detalle?id=' . $id); exit;
 }
 
 // ── Guardar participaciones ───────────────────────────────────
@@ -53,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_participation'])
 
     logActivity('editar', 'cwl_participaciones', $id, 'Participaciones actualizadas');
     setFlash('success', 'Participaciones CWL guardadas.');
-    header('Location: cwl_detalle.php?id=' . $id); exit;
+    header('Location: cwl_detalle?id=' . $id); exit;
 }
 
 // ── Datos ─────────────────────────────────────────────────────
@@ -92,7 +92,7 @@ require __DIR__ . '/includes/header.php';
 
 <div class="ct-page-header">
     <h1><i class="bi bi-trophy-fill"></i> CWL <?= clean($temp['mes']) ?></h1>
-    <a href="cwl.php" class="btn btn-secondary btn-sm"><i class="bi bi-arrow-left"></i> Volver</a>
+    <a href="cwl" class="btn btn-secondary btn-sm"><i class="bi bi-arrow-left"></i> Volver</a>
 </div>
 
 <div class="row g-3 mb-4">
