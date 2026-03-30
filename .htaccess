@@ -1,0 +1,7 @@
+RewriteEngine On
+# Redirigir la raíz a la carpeta clash-tracker
+RewriteRule ^$ clash-tracker/ [L,R=301]
+
+# Si quieres que funcione de forma transparente (sin que cambie la URL):
+# RewriteCond %{REQUEST_URI} !^/clash-tracker/
+# RewriteRule ^(.*)$ clash-tracker/$1 [L]
