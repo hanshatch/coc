@@ -24,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verifyCsrf();
     $id       = (int) ($_POST['id'] ?? 0);
     $username = trim($_POST['username'] ?? '');
-    $nombre   = trim($_POST['usuario'] ?? '');
+    $nombre   = trim($_POST['nombre'] ?? '');
     $rol      = $_POST['rol'] ?? 'editor';
     $password = $_POST['password'] ?? '';
     $activo   = isset($_POST['activo']) ? 1 : 0;
@@ -78,7 +78,7 @@ if ($action === 'create' || $action === 'edit') {
             <input type="hidden" name="id" value="<?= $u['id'] ?? 0 ?>">
             <div class="row g-3">
                 <div class="col-md-6"><label class="form-label">Usuario (login)</label><input type="text" name="username" class="form-control" value="<?= clean($u['username'] ?? '') ?>" required></div>
-                <div class="col-md-6"><label class="form-label">Nombre completo</label><input type="text" name="nombre" class="form-control" value="<?= clean($u['usuario'] ?? '') ?>" required></div>
+                <div class="col-md-6"><label class="form-label">Nombre completo</label><input type="text" name="nombre" class="form-control" value="<?= clean($u['nombre'] ?? '') ?>" required></div>
                 <div class="col-md-6"><label class="form-label">Contraseña</label><input type="password" name="password" class="form-control" <?= $u ? '' : 'required' ?> placeholder="<?= $u ? 'Dejar vacío para no cambiar' : 'Ingresa contraseña' ?>"></div>
                 <div class="col-md-3">
                     <label class="form-label">Rol</label>
@@ -107,7 +107,7 @@ require __DIR__ . '/includes/header.php';
             <?php foreach ($usuariosArr as $u): ?>
             <tr>
                 <td><strong><?= clean($u['username']) ?></strong></td>
-                <td><?= clean($u['usuario']) ?></td>
+                <td><?= clean($u['nombre']) ?></td>
                 <td><span class="badge <?= $u['rol'] === 'admin' ? 'badge-gold' : 'badge-blue' ?>"><?= $u['rol'] ?></span></td>
                 <td><span class="badge <?= $u['activo'] ? 'badge-green' : 'badge-red' ?>"><?= $u['activo'] ? 'Activo' : 'Inactivo' ?></span></td>
                 <td class="text-end">
