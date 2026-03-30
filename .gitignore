@@ -6,3 +6,4 @@ node_modules/
 *.log
 .gemini/
 /tmp/
+clash-tracker/config/database.php
