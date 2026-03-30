@@ -48,11 +48,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_participation'])
 
 // ── Datos ─────────────────────────────────────────────────────
 $participaciones = $db->prepare(
-    'SELECT d.*, j.nombre, j.tag
+    'SELECT d.*, j.usuario, j.usuario
      FROM donaciones d
      JOIN jugadores j ON d.jugador_id = j.id
      WHERE d.periodo_id = ?
-     ORDER BY d.tropas_donadas DESC, j.nombre ASC'
+     ORDER BY d.tropas_donadas DESC, j.usuario ASC'
 );
 $participaciones->execute([$id]);
 $participaciones = $participaciones->fetchAll();
@@ -91,7 +91,7 @@ require __DIR__ . '/includes/header.php';
             <div class="row g-2 align-items-end">
                 <div class="col-md-8">
                     <select name="jugador_ids[]" class="form-select" multiple size="5">
-                        <?php foreach ($jugadoresDisp as $j): ?><option value="<?= $j['id'] ?>"><?= clean($j['nombre']) ?> (<?= clean($j['tag']) ?>)</option><?php endforeach; ?>
+                        <?php foreach ($jugadoresDisp as $j): ?><option value="<?= $j['id'] ?>"><?= clean($j['usuario']) ?> (<?= clean($j['usuario']) ?>)</option><?php endforeach; ?>
                     </select>
                 </div>
                 <div class="col-md-4"><button type="submit" class="btn btn-primary w-100"><i class="bi bi-plus-lg"></i> Agregar</button></div>
@@ -115,7 +115,7 @@ require __DIR__ . '/includes/header.php';
                         $ratioColor = $ratio >= 1 ? 'var(--ct-green)' : ($ratio < 0.5 ? 'var(--ct-red)' : 'var(--ct-text)');
                     ?>
                     <tr>
-                        <td><strong><?= clean($p['nombre']) ?></strong> <small class="text-muted"><?= clean($p['tag']) ?></small></td>
+                        <td><strong><?= clean($p['usuario']) ?></strong> <small class="text-muted"><?= clean($p['usuario']) ?></small></td>
                         <td><input type="number" name="tropas_donadas[<?= $p['jugador_id'] ?>]" class="form-control form-control-sm" min="0" value="<?= (int) $p['tropas_donadas'] ?>" style="width:100px"></td>
                         <td><input type="number" name="tropas_recibidas[<?= $p['jugador_id'] ?>]" class="form-control form-control-sm" min="0" value="<?= (int) $p['tropas_recibidas'] ?>" style="width:100px"></td>
                         <td><span style="color:<?= $ratioColor ?>;font-weight:600"><?= $ratio ?></span></td>

@@ -81,7 +81,7 @@ $currentName = str_replace('.php', '', $currentPage);
 
     <div class="ct-sidebar-footer">
         <?php if ($user): ?>
-            <div class="user-name"><?= clean($user['nombre']) ?></div>
+            <div class="user-name"><?= clean($user['usuario']) ?></div>
             <div class="user-role"><?= clean($user['rol']) ?></div>
             <a href="logout" class="btn btn-sm btn-outline-primary mt-2 w-100">
                 <i class="bi bi-box-arrow-left"></i> Cerrar sesión

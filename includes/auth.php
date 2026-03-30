@@ -48,7 +48,7 @@ function currentUser(): ?array
     return [
         'id'       => (int) $_SESSION['user_id'],
         'username' => $_SESSION['username'],
-        'nombre'   => $_SESSION['nombre'],
+        'nombre'   => $_SESSION['usuario'],
         'rol'      => $_SESSION['rol'],
     ];
 }
@@ -64,7 +64,7 @@ function login(string $username, string $password): bool
         session_regenerate_id(true);
         $_SESSION['user_id']  = (int) $user['id'];
         $_SESSION['username'] = $user['username'];
-        $_SESSION['nombre']   = $user['nombre'];
+        $_SESSION['usuario']   = $user['usuario'];
         $_SESSION['rol']      = $user['rol'];
         return true;
     }

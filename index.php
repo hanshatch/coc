@@ -31,7 +31,7 @@ $ultimoPeriodo = $db->query('SELECT id FROM donaciones_periodos ORDER BY fecha_i
 $donadores = [];
 if ($ultimoPeriodo) {
     $donadores = $db->prepare(
-        'SELECT d.*, j.nombre FROM donaciones d
+        'SELECT d.*, j.usuario FROM donaciones d
          JOIN jugadores j ON d.jugador_id = j.id
          WHERE d.periodo_id = ? ORDER BY d.tropas_donadas DESC LIMIT 5'
     );
@@ -156,7 +156,7 @@ require __DIR__ . '/includes/header.php';
                         <tbody>
                             <?php foreach ($donadores as $d): ?>
                                 <tr>
-                                    <td class="ps-3 py-2"><?= clean($d['nombre']) ?></td>
+                                    <td class="ps-3 py-2"><?= clean($d['usuario']) ?></td>
                                     <td class="text-end pe-3 py-2 text-gold font-monospace"><?= number_format($d['tropas_donadas']) ?></td>
                                 </tr>
                             <?php endforeach; ?>

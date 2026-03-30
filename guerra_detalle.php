@@ -93,11 +93,11 @@ if (isset($_GET['remove']) && isset($_GET['csrf_token'])) {
 
 // ── Datos ─────────────────────────────────────────────────────
 $participaciones = $db->prepare(
-    'SELECT gp.*, j.nombre, j.tag
+    'SELECT gp.*, j.usuario, j.usuario
      FROM guerra_participaciones gp
      JOIN jugadores j ON gp.jugador_id = j.id
      WHERE gp.guerra_id = ?
-     ORDER BY j.nombre ASC'
+     ORDER BY j.usuario ASC'
 );
 $participaciones->execute([$id]);
 $participaciones = $participaciones->fetchAll();
@@ -192,7 +192,7 @@ require __DIR__ . '/includes/header.php';
                         <label class="form-label">Seleccionar jugadores</label>
                         <select name="jugador_ids[]" class="form-select" multiple size="5">
                             <?php foreach ($jugadoresDisp as $j): ?>
-                                <option value="<?= $j['id'] ?>"><?= clean($j['nombre']) ?> (<?= clean($j['tag']) ?>)</option>
+                                <option value="<?= $j['id'] ?>"><?= clean($j['usuario']) ?> (<?= clean($j['usuario']) ?>)</option>
                             <?php endforeach; ?>
                         </select>
                         <small class="text-muted">Ctrl+Click para seleccionar varios</small>
@@ -223,10 +223,10 @@ require __DIR__ . '/includes/header.php';
                 <div class="col-md-6 col-lg-4">
                     <div class="participation-card">
                         <div class="player-name d-flex justify-content-between align-items-center">
-                            <span><?= clean($p['nombre']) ?> <small class="text-muted"><?= clean($p['tag']) ?></small></span>
+                            <span><?= clean($p['usuario']) ?> <small class="text-muted"><?= clean($p['usuario']) ?></small></span>
                             <a href="guerra_detalle?id=<?= $id ?>&remove=<?= $p['jugador_id'] ?>&csrf_token=<?= csrfToken() ?>"
                                class="btn btn-sm btn-danger py-0 px-1" title="Remover"
-                               data-confirm="¿Remover a <?= clean($p['nombre']) ?>?">
+                               data-confirm="¿Remover a <?= clean($p['usuario']) ?>?">
                                 <i class="bi bi-x"></i>
                             </a>
                         </div>

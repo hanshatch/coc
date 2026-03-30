@@ -11,13 +11,13 @@ $action = $_GET['action'] ?? 'list';
 if ($action === 'delete' && isset($_GET['id'])) {
     verifyCsrf();
     $id   = (int) $_GET['id'];
-    $stmt = $db->prepare('SELECT nombre FROM jugadores WHERE id = ?');
+    $stmt = $db->prepare('SELECT usuario FROM jugadores WHERE id = ?');
     $stmt->execute([$id]);
     $j = $stmt->fetch();
 
     if ($j) {
         $db->prepare('DELETE FROM jugadores WHERE id = ?')->execute([$id]);
-        logActivity('eliminar', 'jugadores', $id, 'Jugador: ' . $j['nombre']);
+        logActivity('eliminar', 'jugadores', $id, 'Usuario: ' . $j['usuario']);
         setFlash('success', 'Jugador eliminado correctamente.');
     }
     header('Location: jugadores');
@@ -29,22 +29,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verifyCsrf();
 
     $id            = (int) ($_POST['id'] ?? 0);
-    $tag           = strtoupper(trim($_POST['tag'] ?? ''));
-    $nombre        = trim($_POST['nombre'] ?? '');
-    $nivel_th      = max(1, min(17, (int) ($_POST['nivel_th'] ?? 1)));
-    $nivel_jugador = max(1, (int) ($_POST['nivel_jugador'] ?? 1));
+    $usuario       = strtoupper(trim($_POST['usuario'] ?? ''));
     $rol_clan      = $_POST['rol_clan'] ?? 'miembro';
     $fecha_ingreso = $_POST['fecha_ingreso'] ?: null;
     $activo        = isset($_POST['activo']) ? 1 : 0;
     $notas         = trim($_POST['notas'] ?? '') ?: null;
 
     // Agregar # si falta
-    if ($tag !== '' && $tag[0] !== '#') {
-        $tag = '#' . $tag;
+    if ($usuario !== '' && $usuario[0] !== '#') {
+        $usuario = '#' . $usuario;
     }
 
-    if ($tag === '' || $nombre === '') {
-        setFlash('error', 'Tag y nombre son obligatorios.');
+    if ($usuario === '') {
+        setFlash('error', 'El usuario (tag) es obligatorio.');
         header('Location: jugadores?action=' . ($id ? 'edit&id=' . $id : 'create'));
         exit;
     }
@@ -52,21 +49,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($id > 0) {
         // Editar
         $stmt = $db->prepare(
-            'UPDATE jugadores SET tag=?, nombre=?, nivel_th=?, nivel_jugador=?, rol_clan=?, fecha_ingreso=?, activo=?, notas=?
+            'UPDATE jugadores SET usuario=?, rol_clan=?, fecha_ingreso=?, activo=?, notas=?
              WHERE id=?'
         );
-        $stmt->execute([$tag, $nombre, $nivel_th, $nivel_jugador, $rol_clan, $fecha_ingreso, $activo, $notas, $id]);
-        logActivity('editar', 'jugadores', $id, 'Jugador: ' . $nombre);
+        $stmt->execute([$usuario, $rol_clan, $fecha_ingreso, $activo, $notas, $id]);
+        logActivity('editar', 'jugadores', $id, 'Usuario: ' . $usuario);
         setFlash('success', 'Jugador actualizado.');
     } else {
         // Crear
         $stmt = $db->prepare(
-            'INSERT INTO jugadores (tag, nombre, nivel_th, nivel_jugador, rol_clan, fecha_ingreso, activo, notas)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+            'INSERT INTO jugadores (usuario, rol_clan, fecha_ingreso, activo, notas)
+             VALUES (?, ?, ?, ?, ?)'
         );
-        $stmt->execute([$tag, $nombre, $nivel_th, $nivel_jugador, $rol_clan, $fecha_ingreso, $activo, $notas]);
+        $stmt->execute([$usuario, $rol_clan, $fecha_ingreso, $activo, $notas]);
         $newId = (int) $db->lastInsertId();
-        logActivity('crear', 'jugadores', $newId, 'Jugador: ' . $nombre);
+        logActivity('crear', 'jugadores', $newId, 'Usuario: ' . $usuario);
         setFlash('success', 'Jugador registrado.');
     }
 
@@ -108,17 +105,12 @@ if ($action === 'create' || $action === 'edit') {
                 <input type="hidden" name="id" value="<?= $jugador['id'] ?? 0 ?>">
 
                 <div class="row g-3">
-                    <div class="col-md-4">
-                        <label for="tag" class="form-label">Tag</label>
-                        <input type="text" name="tag" id="tag" class="form-control" placeholder="#ABC123"
-                               value="<?= clean($jugador['tag'] ?? '') ?>" required>
+                    <div class="col-md-6">
+                        <label for="usuario" class="form-label">Usuario</label>
+                        <input type="text" name="usuario" id="usuario" class="form-control" placeholder="#ABC123"
+                               value="<?= clean($jugador['usuario'] ?? '') ?>" required>
                     </div>
-                    <div class="col-md-4">
-                        <label for="nombre" class="form-label">Nombre</label>
-                        <input type="text" name="nombre" id="nombre" class="form-control"
-                               value="<?= clean($jugador['nombre'] ?? '') ?>" required>
-                    </div>
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                         <label for="rol_clan" class="form-label">Rol en el Clan</label>
                         <select name="rol_clan" id="rol_clan" class="form-select">
                             <?php foreach (['lider','colider','veterano','miembro'] as $r): ?>
@@ -128,27 +120,12 @@ if ($action === 'create' || $action === 'edit') {
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <div class="col-md-3">
-                        <label for="nivel_th" class="form-label">Town Hall</label>
-                        <select name="nivel_th" id="nivel_th" class="form-select">
-                            <?php for ($i = 1; $i <= 17; $i++): ?>
-                                <option value="<?= $i ?>" <?= ($jugador['nivel_th'] ?? 1) == $i ? 'selected' : '' ?>>
-                                    TH <?= $i ?>
-                                </option>
-                            <?php endfor; ?>
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <label for="nivel_jugador" class="form-label">Nivel del Jugador</label>
-                        <input type="number" name="nivel_jugador" id="nivel_jugador" class="form-control"
-                               min="1" value="<?= (int) ($jugador['nivel_jugador'] ?? 1) ?>">
-                    </div>
-                    <div class="col-md-3">
+                    <div class="col-md-6">
                         <label for="fecha_ingreso" class="form-label">Fecha de Ingreso</label>
                         <input type="date" name="fecha_ingreso" id="fecha_ingreso" class="form-control"
                                value="<?= clean($jugador['fecha_ingreso'] ?? '') ?>">
                     </div>
-                    <div class="col-md-3 d-flex align-items-end">
+                    <div class="col-md-6 d-flex align-items-end">
                         <div class="form-check">
                             <input type="checkbox" name="activo" id="activo" class="form-check-input"
                                    <?= ($jugador['activo'] ?? 1) ? 'checked' : '' ?>>
@@ -182,8 +159,7 @@ $where  = [];
 $params = [];
 
 if ($search !== '') {
-    $where[]  = '(nombre LIKE ? OR tag LIKE ?)';
-    $params[] = "%{$search}%";
+    $where[]  = 'usuario LIKE ?';
     $params[] = "%{$search}%";
 }
 
@@ -194,7 +170,7 @@ if ($filter === 'activos') {
 }
 
 $whereSQL = $where ? 'WHERE ' . implode(' AND ', $where) : '';
-$jugadores = $db->prepare("SELECT * FROM jugadores {$whereSQL} ORDER BY nombre ASC");
+$jugadores = $db->prepare("SELECT * FROM jugadores {$whereSQL} ORDER BY usuario ASC");
 $jugadores->execute($params);
 $jugadores = $jugadores->fetchAll();
 
@@ -220,7 +196,7 @@ require __DIR__ . '/includes/header.php';
     <div class="card-body py-2">
         <form method="GET" class="row g-2 align-items-center">
             <div class="col-auto">
-                <input type="text" name="q" class="form-control form-control-sm" placeholder="Buscar por nombre o tag..."
+                <input type="text" name="q" class="form-control form-control-sm" placeholder="Buscar por usuario..."
                        value="<?= clean($search) ?>">
             </div>
             <div class="col-auto">
@@ -249,10 +225,7 @@ require __DIR__ . '/includes/header.php';
             <table class="table table-hover mb-0">
                 <thead>
                     <tr>
-                        <th>Tag</th>
-                        <th>Nombre</th>
-                        <th>TH</th>
-                        <th>Nivel</th>
+                        <th>Usuario (Tag)</th>
                         <th>Rol</th>
                         <th>Ingreso</th>
                         <th>Estado</th>
@@ -262,10 +235,7 @@ require __DIR__ . '/includes/header.php';
                 <tbody>
                     <?php foreach ($jugadores as $j): ?>
                         <tr>
-                            <td><span style="color:var(--ct-cyan);font-weight:600"><?= clean($j['tag']) ?></span></td>
-                            <td><?= clean($j['nombre']) ?></td>
-                            <td><span class="badge badge-gold">TH<?= (int) $j['nivel_th'] ?></span></td>
-                            <td><?= (int) $j['nivel_jugador'] ?></td>
+                            <td><span style="color:var(--ct-cyan);font-weight:600"><?= clean($j['usuario']) ?></span></td>
                             <td><span class="badge <?= $rolBadge[$j['rol_clan']] ?? 'badge-muted' ?>"><?= ucfirst($j['rol_clan']) ?></span></td>
                             <td><?= $j['fecha_ingreso'] ? date('d/m/Y', strtotime($j['fecha_ingreso'])) : '—' ?></td>
                             <td>
@@ -281,7 +251,7 @@ require __DIR__ . '/includes/header.php';
                                 </a>
                                 <a href="jugadores?action=delete&id=<?= $j['id'] ?>&csrf_token=<?= csrfToken() ?>"
                                    class="btn btn-sm btn-danger" title="Eliminar"
-                                   data-confirm="¿Eliminar a <?= clean($j['nombre']) ?>? Esto borrará todas sus participaciones.">
+                                   data-confirm="¿Eliminar a <?= clean($j['usuario']) ?>? Esto borrará todas sus participaciones.">
                                     <i class="bi bi-trash"></i>
                                 </a>
                             </td>

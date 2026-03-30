@@ -58,11 +58,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_participation'])
 
 // ── Datos ─────────────────────────────────────────────────────
 $rawParticipaciones = $db->prepare(
-    'SELECT cp.*, j.nombre, j.tag
+    'SELECT cp.*, j.usuario, j.usuario
      FROM cwl_participaciones cp
      JOIN jugadores j ON cp.jugador_id = j.id
      WHERE cp.temporada_id = ?
-     ORDER BY j.nombre ASC, cp.dia ASC'
+     ORDER BY j.usuario ASC, cp.dia ASC'
 );
 $rawParticipaciones->execute([$id]);
 $rawParticipaciones = $rawParticipaciones->fetchAll();
@@ -72,7 +72,7 @@ $jugadores = [];
 foreach ($rawParticipaciones as $row) {
     $jid = $row['jugador_id'];
     if (!isset($jugadores[$jid])) {
-        $jugadores[$jid] = ['nombre' => $row['nombre'], 'tag' => $row['tag'], 'dias' => []];
+        $jugadores[$jid] = ['nombre' => $row['usuario'], 'tag' => $row['usuario'], 'dias' => []];
     }
     $jugadores[$jid]['dias'][$row['dia']] = $row;
 }
@@ -114,7 +114,7 @@ require __DIR__ . '/includes/header.php';
                 <div class="col-md-8">
                     <select name="jugador_ids[]" class="form-select" multiple size="5">
                         <?php foreach ($jugadoresDisp as $j): ?>
-                            <option value="<?= $j['id'] ?>"><?= clean($j['nombre']) ?> (<?= clean($j['tag']) ?>)</option>
+                            <option value="<?= $j['id'] ?>"><?= clean($j['usuario']) ?> (<?= clean($j['usuario']) ?>)</option>
                         <?php endforeach; ?>
                     </select>
                 </div>
@@ -143,7 +143,7 @@ require __DIR__ . '/includes/header.php';
                 <tbody>
                     <?php foreach ($jugadores as $jid => $jdata): ?>
                     <tr>
-                        <td><strong><?= clean($jdata['nombre']) ?></strong></td>
+                        <td><strong><?= clean($jdata['usuario']) ?></strong></td>
                         <?php for ($dia = 1; $dia <= 7; $dia++):
                             $d = $jdata['dias'][$dia] ?? null;
                         ?>

@@ -57,7 +57,7 @@ require __DIR__ . '/includes/header.php';
                 <select name="u" class="form-select form-select-sm">
                     <option value="">— Todos —</option>
                     <?php foreach ($users as $u): ?>
-                        <option value="<?= $u['id'] ?>" <?= $userFilter === (int)$u['id'] ? 'selected' : '' ?>><?= clean($u['nombre']) ?> (@<?= clean($u['username']) ?>)</option>
+                        <option value="<?= $u['id'] ?>" <?= $userFilter === (int)$u['id'] ? 'selected' : '' ?>><?= clean($u['usuario']) ?> (@<?= clean($u['username']) ?>)</option>
                     <?php endforeach; ?>
                 </select>
             </div>

@@ -56,11 +56,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_participation'])
 
 // ── Datos ─────────────────────────────────────────────────────
 $participaciones = $db->prepare(
-    'SELECT cp.*, j.nombre, j.tag
+    'SELECT cp.*, j.usuario, j.usuario
      FROM capital_participaciones cp
      JOIN jugadores j ON cp.jugador_id = j.id
      WHERE cp.semana_id = ?
-     ORDER BY cp.oro_aportado DESC, j.nombre ASC'
+     ORDER BY cp.oro_aportado DESC, j.usuario ASC'
 );
 $participaciones->execute([$id]);
 $participaciones = $participaciones->fetchAll();
@@ -101,7 +101,7 @@ require __DIR__ . '/includes/header.php';
             <div class="row g-2 align-items-end">
                 <div class="col-md-8">
                     <select name="jugador_ids[]" class="form-select" multiple size="5">
-                        <?php foreach ($jugadoresDisp as $j): ?><option value="<?= $j['id'] ?>"><?= clean($j['nombre']) ?> (<?= clean($j['tag']) ?>)</option><?php endforeach; ?>
+                        <?php foreach ($jugadoresDisp as $j): ?><option value="<?= $j['id'] ?>"><?= clean($j['usuario']) ?> (<?= clean($j['usuario']) ?>)</option><?php endforeach; ?>
                     </select>
                 </div>
                 <div class="col-md-4"><button type="submit" class="btn btn-primary w-100"><i class="bi bi-plus-lg"></i> Agregar</button></div>
@@ -120,7 +120,7 @@ require __DIR__ . '/includes/header.php';
             <?php foreach ($participaciones as $p): ?>
             <div class="col-md-6 col-lg-4">
                 <div class="participation-card">
-                    <div class="player-name"><?= clean($p['nombre']) ?></div>
+                    <div class="player-name"><?= clean($p['usuario']) ?></div>
                     <div class="row g-2">
                         <div class="col-12">
                             <label class="form-label">Oro Aportado</label>
