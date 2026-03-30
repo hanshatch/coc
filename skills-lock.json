@@ -1,6 +1,11 @@
 {
   "version": 1,
   "skills": {
+    "php-pro": {
+      "source": "jeffallan/claude-skills",
+      "sourceType": "github",
+      "computedHash": "455d56996d27abb1031058e8822ccef172d4c3195bbc555f13883b208a9c7e3f"
+    },
     "ui-ux-designer": {
       "source": "lotosbin/claude-skills",
       "sourceType": "github",
