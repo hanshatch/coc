@@ -9,19 +9,38 @@ try {
     $db = getDB();
     echo "✅ Conectado.<br>";
 
+    // Función auxiliar para saber si una columna existe
+    function columnExists($db, $table, $column) {
+        $stmt = $db->query("SHOW COLUMNS FROM $table LIKE '$column'");
+        return (bool) $stmt->fetch();
+    }
+
     // 1. Eliminar columnas innecesarias
-    echo "Eliminando columnas 'nombre', 'nivel_th', 'nivel_jugador'...<br>";
-    $db->exec("ALTER TABLE jugadores DROP COLUMN IF EXISTS nombre");
-    $db->exec("ALTER TABLE jugadores DROP COLUMN IF EXISTS nivel_th");
-    $db->exec("ALTER TABLE jugadores DROP COLUMN IF EXISTS nivel_jugador");
+    $colsToDelete = ['nombre', 'nivel_th', 'nivel_jugador'];
+    foreach ($colsToDelete as $col) {
+        if (columnExists($db, 'jugadores', $col)) {
+            echo "Eliminando columna '$col'... ";
+            $db->exec("ALTER TABLE jugadores DROP COLUMN $col");
+            echo "✅<br>";
+        } else {
+            echo "La columna '$col' ya no existe. Saltando...<br>";
+        }
+    }
 
     // 2. Renombrar 'tag' a 'usuario'
-    // Nota: Usamos CHANGE para MariaDB/MySQL antiguo o RENAME COLUMN para nuevos.
-    // CHANGE es más compatible.
-    echo "Renombrando 'tag' a 'usuario'...<br>";
-    $db->exec("ALTER TABLE jugadores CHANGE tag usuario VARCHAR(20) NOT NULL");
+    if (columnExists($db, 'jugadores', 'tag')) {
+        echo "Renombrando 'tag' a 'usuario'... ";
+        // MySQL/MariaDB compatible syntax
+        $db->exec("ALTER TABLE jugadores CHANGE tag usuario VARCHAR(50) NOT NULL");
+        echo "✅<br>";
+    } elseif (columnExists($db, 'jugadores', 'usuario')) {
+        echo "La columna 'usuario' ya existe. ✅<br>";
+    } else {
+        echo "❌ No se encontró columna 'tag' ni 'usuario'. Verifica la tabla.<br>";
+    }
 
-    echo "✅ Actualización de base de datos completada!<br>";
+    echo "<hr>✅ Proceso de actualización finalizado!";
+    echo "<br><br><a href='jugadores' style='padding:10px 20px; background:gold; color:black; text-decoration:none; font-weight:bold;'>Volver a Jugadores</a>";
 
 } catch (Exception $e) {
     echo "<h2 style='color:red'>❌ Error:</h2>";
