@@ -31,6 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $id                 = (int) ($_POST['id'] ?? 0);
     $fecha              = $_POST['fecha'] ?? '';
     $oponente           = trim($_POST['oponente'] ?? '');
+    $tamano             = (int) ($_POST['tamano'] ?? 15);
     $resultado          = $_POST['resultado'] ?? 'en_curso';
     $estrellas_clan     = max(0, (int) ($_POST['estrellas_clan'] ?? 0));
     $estrellas_oponente = max(0, (int) ($_POST['estrellas_oponente'] ?? 0));
@@ -44,17 +45,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($id > 0) {
         $stmt = $db->prepare(
-            'UPDATE guerras SET fecha=?, oponente=?, resultado=?, estrellas_clan=?, estrellas_oponente=?, notas=? WHERE id=?'
+            'UPDATE guerras SET fecha=?, oponente=?, tamano=?, resultado=?, estrellas_clan=?, estrellas_oponente=?, notas=? WHERE id=?'
         );
-        $stmt->execute([$fecha, $oponente, $resultado, $estrellas_clan, $estrellas_oponente, $notas, $id]);
+        $stmt->execute([$fecha, $oponente, $tamano, $resultado, $estrellas_clan, $estrellas_oponente, $notas, $id]);
         logActivity('editar', 'guerras', $id, 'Guerra vs ' . $oponente);
         setFlash('success', 'Guerra actualizada.');
     } else {
         $stmt = $db->prepare(
-            'INSERT INTO guerras (fecha, oponente, resultado, estrellas_clan, estrellas_oponente, notas)
-             VALUES (?, ?, ?, ?, ?, ?)'
+            'INSERT INTO guerras (fecha, oponente, tamano, resultado, estrellas_clan, estrellas_oponente, notas)
+             VALUES (?, ?, ?, ?, ?, ?, ?)'
         );
-        $stmt->execute([$fecha, $oponente, $resultado, $estrellas_clan, $estrellas_oponente, $notas]);
+        $stmt->execute([$fecha, $oponente, $tamano, $resultado, $estrellas_clan, $estrellas_oponente, $notas]);
         $newId = (int) $db->lastInsertId();
         logActivity('crear', 'guerras', $newId, 'Guerra vs ' . $oponente);
         setFlash('success', 'Guerra registrada.');
@@ -107,6 +108,16 @@ if ($action === 'create' || $action === 'edit') {
                         <label for="oponente" class="form-label">Clan Oponente</label>
                         <input type="text" name="oponente" id="oponente" class="form-control"
                                value="<?= clean($guerra['oponente'] ?? '') ?>" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="tamano" class="form-label">Tamaño (Participantes)</label>
+                        <select name="tamano" id="tamano" class="form-select">
+                            <?php foreach ([5, 10, 15, 20, 25, 30, 40, 50] as $t): ?>
+                                <option value="<?= $t ?>" <?= ($guerra['tamano'] ?? 15) == $t ? 'selected' : '' ?>>
+                                    <?= $t ?> vs <?= $t ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
                     <div class="col-md-4">
                         <label for="resultado" class="form-label">Resultado</label>

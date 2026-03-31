@@ -36,7 +36,16 @@ try {
     } elseif (columnExists($db, 'jugadores', 'usuario')) {
         echo "La columna 'usuario' ya existe. ✅<br>";
     } else {
-        echo "❌ No se encontró columna 'tag' ni 'usuario'. Verifica la tabla.<br>";
+        echo "❌ No se encontró columna 'tag' ni 'usuario' en jugadores. Verifica la tabla.<br>";
+    }
+
+    // 3. Agregar 'tamano' a guerras
+    if (!columnExists($db, 'guerras', 'tamano')) {
+        echo "Añadiendo columna 'tamano' a guerras... ";
+        $db->exec("ALTER TABLE guerras ADD COLUMN tamano INT DEFAULT 15 AFTER oponente");
+        echo "✅<br>";
+    } else {
+        echo "La columna 'tamano' ya existe en guerras. ✅<br>";
     }
 
     echo "<hr>✅ Proceso de actualización finalizado!";

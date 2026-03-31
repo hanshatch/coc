@@ -148,13 +148,29 @@ require __DIR__ . '/includes/header.php';
     </div>
     <div class="col-md-3">
         <div class="stat-card">
+            <div class="stat-icon">👥</div>
+            <div class="stat-value">
+                <?= count($participaciones) ?> / <?= (int) $guerra['tamano'] ?>
+            </div>
+            <div class="stat-label">
+                Jugadores 
+                <?php if (count($participaciones) != $guerra['tamano']): ?>
+                    <span class="badge bg-danger ms-1">¡Incompleto!</span>
+                <?php else: ?>
+                    <span class="badge bg-success ms-1">OK</span>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
             <div class="stat-icon">
                 <span class="badge <?= $resBadge[$guerra['resultado']] ?? 'badge-muted' ?>" style="font-size:1rem">
                     <?= ucfirst(str_replace('_', ' ', $guerra['resultado'])) ?>
                 </span>
             </div>
             <div class="stat-value"><?= (int) $guerra['estrellas_clan'] ?> - <?= (int) $guerra['estrellas_oponente'] ?></div>
-            <div class="stat-label">Estrellas</div>
+            <div class="stat-label">Estrellas Marcador</div>
         </div>
     </div>
     <div class="col-md-3">
