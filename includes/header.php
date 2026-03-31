@@ -67,6 +67,9 @@ $currentName = str_replace('.php', '', $currentPage);
         <a href="capital" class="nav-link <?= $currentName === 'capital' || $currentName === 'capital_detalle' ? 'active' : '' ?>">
             <span class="nav-icon"><i class="bi bi-building-fill"></i></span> Capital de Clan
         </a>
+        <a href="reportes" class="nav-link <?= $currentName === 'reportes' ? 'active' : '' ?>">
+            <span class="nav-icon"><i class="bi bi-bar-chart-fill"></i></span> Reporte Rendimiento
+        </a>
 
         <?php if ($user && $user['rol'] === 'admin'): ?>
             <hr class="my-2 border-secondary">

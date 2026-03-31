@@ -104,9 +104,9 @@ $participaciones = $participaciones->fetchAll();
 
 // Jugadores activos no en esta guerra
 $jugadoresDisp = $db->prepare(
-    'SELECT id, nombre, tag FROM jugadores
+    'SELECT id, usuario FROM jugadores
      WHERE activo = 1 AND id NOT IN (SELECT jugador_id FROM guerra_participaciones WHERE guerra_id = ?)
-     ORDER BY nombre ASC'
+     ORDER BY usuario ASC'
 );
 $jugadoresDisp->execute([$id]);
 $jugadoresDisp = $jugadoresDisp->fetchAll();
