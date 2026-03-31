@@ -5,6 +5,15 @@ require_once __DIR__ . '/includes/auth.php';
 requireLogin();
 
 $db     = getDB();
+
+// ── AUTO-UPDATE DB (Manejo de transición) ────────────────────
+try {
+    $check = $db->query("SHOW COLUMNS FROM guerras LIKE 'tamano'");
+    if (!$check->fetch()) {
+        $db->exec("ALTER TABLE guerras ADD COLUMN tamano INT DEFAULT 15 AFTER oponente");
+    }
+} catch (Exception $e) {}
+
 $action = $_GET['action'] ?? 'list';
 
 // ── ELIMINAR ──────────────────────────────────────────────────
