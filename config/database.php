@@ -16,7 +16,7 @@ define('DB_PASS', '7N9|9>~X9;Cv');
 define('DB_CHARSET', 'utf8mb4');
 
 // ── Constantes de la app ──────────────────────────────────────
-define('APP_NAME', 'H@tch Clan System');
+define('APP_NAME', 'H@tch ⚔️');
 define('APP_VERSION', '1.0.0');
 
 /**
