@@ -30,6 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $mes            = trim($_POST['mes'] ?? '');
     $liga           = trim($_POST['liga'] ?? '') ?: null;
     $posicion_final = ($_POST['posicion_final'] ?? '') !== '' ? (int) $_POST['posicion_final'] : null;
+    $tamano         = (int) ($_POST['tamano'] ?? 15);
     $notas          = trim($_POST['notas'] ?? '') ?: null;
 
     if ($mes === '') {
@@ -39,13 +40,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($id > 0) {
-        $stmt = $db->prepare('UPDATE cwl_temporadas SET mes=?, liga=?, posicion_final=?, notas=? WHERE id=?');
-        $stmt->execute([$mes, $liga, $posicion_final, $notas, $id]);
+        $stmt = $db->prepare('UPDATE cwl_temporadas SET mes=?, liga=?, tamano=?, posicion_final=?, notas=? WHERE id=?');
+        $stmt->execute([$mes, $liga, $tamano, $posicion_final, $notas, $id]);
         logActivity('editar', 'cwl_temporadas', $id, 'CWL ' . $mes);
         setFlash('success', 'Temporada actualizada.');
     } else {
-        $stmt = $db->prepare('INSERT INTO cwl_temporadas (mes, liga, posicion_final, notas) VALUES (?, ?, ?, ?)');
-        $stmt->execute([$mes, $liga, $posicion_final, $notas]);
+        $stmt = $db->prepare('INSERT INTO cwl_temporadas (mes, liga, tamano, posicion_final, notas) VALUES (?, ?, ?, ?, ?)');
+        $stmt->execute([$mes, $liga, $tamano, $posicion_final, $notas]);
         logActivity('crear', 'cwl_temporadas', (int) $db->lastInsertId(), 'CWL ' . $mes);
         setFlash('success', 'Temporada CWL creada.');
     }
@@ -82,12 +83,14 @@ if ($action === 'create' || $action === 'edit') {
                     <input type="month" name="mes" id="mes" class="form-control"
                            value="<?= clean($temp['mes'] ?? date('Y-m')) ?>" required>
                 </div>
-                <div class="col-md-3">
-                    <label for="liga" class="form-label">Liga</label>
-                    <input type="text" name="liga" id="liga" class="form-control" placeholder="Ej: Cristal I"
-                           value="<?= clean($temp['liga'] ?? '') ?>">
+                <div class="col-md-2">
+                    <label for="tamano" class="form-label">Tamaño</label>
+                    <select name="tamano" id="tamano" class="form-select">
+                        <option value="15" <?= ($temp['tamano'] ?? 15) == 15 ? 'selected' : '' ?>>15 vs 15</option>
+                        <option value="30" <?= ($temp['tamano'] ?? 15) == 30 ? 'selected' : '' ?>>30 vs 30</option>
+                    </select>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <label for="posicion_final" class="form-label">Posición Final</label>
                     <select name="posicion_final" id="posicion_final" class="form-select">
                         <option value="">—</option>
