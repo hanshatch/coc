@@ -265,10 +265,10 @@ function toggleAllPlayers(checked) {
                                     <small class="text-muted opacity-50" style="font-size: 0.65rem;"><?= strtoupper($jd['rol_clan'] ?? 'miembro') ?></small>
                                 </div>
                                 <a href="cwl_detalle?id=<?= $id ?>&remove=<?= $jid ?>&csrf_token=<?= csrfToken() ?>" 
-                                   class="btn btn-link btn-sm p-0 text-danger opacity-25 hover-opacity-100" 
+                                   class="btn btn-sm btn-link p-1 text-danger opacity-50 hover-opacity-100" 
                                    title="Remover del Roster"
                                    onclick="return confirm('¿Remover a <?= clean($jd['nombre']) ?> de esta temporada?')">
-                                    <i class="bi bi-x-circle"></i>
+                                    <i class="bi bi-person-x-fill fs-5"></i>
                                 </a>
                             </div>
                         </td>
