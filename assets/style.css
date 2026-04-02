@@ -7,24 +7,24 @@
 
 /* ── Variables ──────────────────────────────────────────────── */
 :root {
-    --ct-bg:          #4d433d;
-    --ct-surface:     #525c5a;
-    --ct-surface2:    #56877d;
-    --ct-border:      rgba(255, 255, 255, 0.12);
-    --ct-gold:        #bade57;
-    --ct-gold-hover:  #c9e67a;
-    --ct-gold-dark:   #8ccc81;
-    --ct-green:       #bade57;
-    --ct-red:         #ff5e57;
-    --ct-blue:        #56877d;
-    --ct-purple:      #a881fb;
-    --ct-cyan:        #8ccc81;
-    --ct-text:        #f1f3f5;
-    --ct-text-muted:  #c5cad5;
+    --ct-bg:          #0b0e14;
+    --ct-surface:     #161b26;
+    --ct-surface2:    #212838;
+    --ct-border:      rgba(255, 255, 255, 0.06);
+    --ct-gold:        #f59e0b;
+    --ct-gold-hover:  #fbbf24;
+    --ct-gold-dark:   #d97706;
+    --ct-green:       #10b981;
+    --ct-red:         #ef4444;
+    --ct-blue:        #60a5fa;
+    --ct-purple:      #a78bfa;
+    --ct-cyan:        #2dd4bf;
+    --ct-text:        #f8fafc;
+    --ct-text-muted:  #94a3b8;
     --ct-sidebar-w:   260px;
     --ct-font-title:  'Rajdhani', sans-serif;
     --ct-font-body:   'Outfit', sans-serif;
-    --ct-glass:       rgba(77, 67, 61, 0.7);
+    --ct-glass:       rgba(11, 14, 20, 0.85);
 }
 
 /* ── Reset & Body ──────────────────────────────────────────── */
@@ -103,14 +103,14 @@ a:hover { color: var(--ct-gold-hover); text-decoration: none; }
 
 .ct-sidebar-nav .nav-link:hover {
     color: var(--ct-text);
-    background: rgba(238, 179, 75, 0.06);
+    background: rgba(245, 158, 11, 0.04);
 }
 
 .ct-sidebar-nav .nav-link.active {
     color: var(--ct-gold);
-    background: linear-gradient(90deg, rgba(238, 179, 75, 0.12), transparent);
+    background: linear-gradient(90deg, rgba(245, 158, 11, 0.12), transparent);
     border-left-color: var(--ct-gold);
-    box-shadow: inset 2px 0 0 -1px var(--ct-gold);
+    box-shadow: inset 4px 0 0 -1px var(--ct-gold);
 }
 
 .ct-sidebar-nav .nav-link .nav-icon {
@@ -182,8 +182,8 @@ a:hover { color: var(--ct-gold-hover); text-decoration: none; }
     --bs-table-bg: transparent;
     --bs-table-color: var(--ct-text);
     --bs-table-border-color: var(--ct-border);
-    --bs-table-hover-bg: rgba(238, 179, 75, 0.15);
-    --bs-table-striped-bg: rgba(255, 255, 255, 0.015);
+    --bs-table-hover-bg: rgba(245, 158, 11, 0.08);
+    --bs-table-striped-bg: rgba(255, 255, 255, 0.01);
 }
 .border-primary { border-color: var(--ct-gold) !important; }
 .border-blue    { border-color: var(--ct-blue) !important; }

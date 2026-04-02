@@ -263,7 +263,7 @@ function toggleAllPlayers(checked) {
     font-size: 0.9rem;
 }
 .btn-check:checked + .btn-outline-surface {
-    background: rgba(238, 179, 75, 0.15);
+    background: rgba(245, 158, 11, 0.15);
     border-color: var(--ct-gold);
     color: var(--ct-gold);
 }

@@ -26,7 +26,7 @@ $currentName = str_replace('.php', '', $currentPage);
     <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <!-- Custom Theme -->
-    <link href="assets/style.css?v=2.0" rel="stylesheet">
+    <link href="assets/style.css?v=3.0" rel="stylesheet">
 </head>
 <body>
 
@@ -56,7 +56,7 @@ $currentName = str_replace('.php', '', $currentPage);
             <span class="nav-icon"><i class="bi bi-lightning-fill"></i></span> Guerras
         </a>
         <a href="cwl" class="nav-link <?= $currentName === 'cwl' || $currentName === 'cwl_detalle' ? 'active' : '' ?>">
-            <span class="nav-icon"><i class="bi bi-trophy-fill"></i></span> Liga CWL
+            <span class="nav-icon"><i class="bi bi-trophy-fill"></i></span> Liga de guerras
         </a>
         <a href="juegos" class="nav-link <?= $currentName === 'juegos' || $currentName === 'juegos_detalle' ? 'active' : '' ?>">
             <span class="nav-icon"><i class="bi bi-controller"></i></span> Juegos del Clan
