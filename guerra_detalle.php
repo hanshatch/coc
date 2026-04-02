@@ -134,14 +134,14 @@ require __DIR__ . '/includes/header.php';
 
 <!-- Header de la guerra -->
 <div class="row g-3 mb-4">
-    <div class="col-md-3">
+    <div class="col">
         <div class="stat-card">
             <div class="stat-icon">📅</div>
             <div class="stat-value"><?= date('d/m', strtotime($guerra['fecha'])) ?></div>
             <div class="stat-label">Fecha</div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col">
         <div class="stat-card">
             <div class="stat-icon">👥</div>
             <div class="stat-value">
@@ -157,7 +157,7 @@ require __DIR__ . '/includes/header.php';
             </div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col">
         <div class="stat-card">
             <div class="stat-icon">
                 <span class="badge <?= $resBadge[$guerra['resultado']] ?? 'badge-muted' ?>" style="font-size:1rem">
@@ -168,14 +168,14 @@ require __DIR__ . '/includes/header.php';
             <div class="stat-label">Estrellas Marcador</div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col">
         <div class="stat-card">
             <div class="stat-icon">⭐</div>
             <div class="stat-value"><?= $totalEstrellas ?></div>
             <div class="stat-label">Estrellas logradas</div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col">
         <div class="stat-card">
             <div class="stat-icon">💥</div>
             <div class="stat-value"><?= $avgPct ?>%</div>
@@ -193,7 +193,7 @@ require __DIR__ . '/includes/header.php';
             <i class="bi bi-chevron-down"></i> Panel de Selección
         </button>
     </div>
-    <div class="collapse show" id="addPlayersForm">
+    <div class="collapse" id="addPlayersForm">
         <div class="card-body">
             <form method="POST">
                 <?= csrfField() ?>
