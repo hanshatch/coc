@@ -7,23 +7,24 @@
 
 /* ── Variables ──────────────────────────────────────────────── */
 :root {
-    --ct-bg:          #0f1117;
-    --ct-surface:     #1a1d27;
-    --ct-surface2:    #242734;
-    --ct-border:      #2e3140;
-    --ct-gold:        #f0a030;
-    --ct-gold-hover:  #ffb347;
-    --ct-gold-dark:   #c47f1a;
-    --ct-green:       #3ddc84;
-    --ct-red:         #ff5252;
-    --ct-blue:        #5c9eff;
-    --ct-purple:      #b388ff;
-    --ct-cyan:        #64ffda;
-    --ct-text:        #e4e6eb;
-    --ct-text-muted:  #8b8fa3;
+    --ct-bg:          #0a0c12;
+    --ct-surface:     #12151f;
+    --ct-surface2:    #1a1e2b;
+    --ct-border:      rgba(255, 255, 255, 0.08);
+    --ct-gold:        #eeb34b;
+    --ct-gold-hover:  #f5c46d;
+    --ct-gold-dark:   #d1902a;
+    --ct-green:       #2ecc71;
+    --ct-red:         #ff5e57;
+    --ct-blue:        #4dabf7;
+    --ct-purple:      #a881fb;
+    --ct-cyan:        #1de9b6;
+    --ct-text:        #f1f3f5;
+    --ct-text-muted:  #9499ad;
     --ct-sidebar-w:   260px;
     --ct-font-title:  'Rajdhani', sans-serif;
     --ct-font-body:   'Outfit', sans-serif;
+    --ct-glass:       rgba(18, 21, 31, 0.7);
 }
 
 /* ── Reset & Body ──────────────────────────────────────────── */
@@ -59,6 +60,7 @@ a:hover { color: var(--ct-gold-hover); text-decoration: none; }
     flex-direction: column;
     z-index: 1040;
     transition: transform .3s ease;
+    backdrop-filter: blur(10px);
 }
 
 .ct-sidebar-brand {
@@ -101,13 +103,14 @@ a:hover { color: var(--ct-gold-hover); text-decoration: none; }
 
 .ct-sidebar-nav .nav-link:hover {
     color: var(--ct-text);
-    background: rgba(240,160,48,.06);
+    background: rgba(238, 179, 75, 0.06);
 }
 
 .ct-sidebar-nav .nav-link.active {
     color: var(--ct-gold);
-    background: rgba(240,160,48,.1);
+    background: linear-gradient(90deg, rgba(238, 179, 75, 0.12), transparent);
     border-left-color: var(--ct-gold);
+    box-shadow: inset 2px 0 0 -1px var(--ct-gold);
 }
 
 .ct-sidebar-nav .nav-link .nav-icon {
@@ -163,6 +166,7 @@ a:hover { color: var(--ct-gold-hover); text-decoration: none; }
     border: 1px solid var(--ct-border);
     border-radius: .75rem;
     color: var(--ct-text);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
 }
 
 .card-header {
@@ -178,8 +182,8 @@ a:hover { color: var(--ct-gold-hover); text-decoration: none; }
     --bs-table-bg: transparent;
     --bs-table-color: var(--ct-text);
     --bs-table-border-color: var(--ct-border);
-    --bs-table-hover-bg: rgba(240,160,48,.05);
-    --bs-table-striped-bg: rgba(255,255,255,.02);
+    --bs-table-hover-bg: rgba(238, 179, 75, 0.04);
+    --bs-table-striped-bg: rgba(255, 255, 255, 0.015);
 }
 
 .table thead th {
@@ -242,8 +246,8 @@ a:hover { color: var(--ct-gold-hover); text-decoration: none; }
 .btn-primary:hover {
     background: linear-gradient(135deg, var(--ct-gold-hover), var(--ct-gold));
     color: #0f1117;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 15px rgba(240,160,48,.3);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(238, 179, 75, 0.35);
 }
 
 .btn-outline-primary {
@@ -366,8 +370,9 @@ a:hover { color: var(--ct-gold-hover); text-decoration: none; }
     font-size: .8rem;
     color: var(--ct-text-muted);
     text-transform: uppercase;
-    letter-spacing: .5px;
+    letter-spacing: 1px;
     margin-top: .35rem;
+    font-weight: 500;
 }
 
 /* ── Participation Grid ────────────────────────────────────── */

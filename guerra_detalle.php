@@ -257,13 +257,13 @@ function toggleAllPlayers(checked) {
 
 <style>
 .btn-outline-surface {
-    color: #fff;
+    color: var(--ct-text);
     border-color: var(--ct-border);
     background: var(--ct-surface);
     font-size: 0.9rem;
 }
 .btn-check:checked + .btn-outline-surface {
-    background: rgba(212, 175, 55, 0.2);
+    background: rgba(238, 179, 75, 0.15);
     border-color: var(--ct-gold);
     color: var(--ct-gold);
 }
