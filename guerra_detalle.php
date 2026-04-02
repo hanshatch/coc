@@ -50,13 +50,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_participation'])
     $a1pct  = $_POST['ataque1_porcentaje'] ?? [];
     $a2est  = $_POST['ataque2_estrellas'] ?? [];
     $a2pct  = $_POST['ataque2_porcentaje'] ?? [];
-    $defest = $_POST['defensa_estrellas'] ?? [];
-    $defpct = $_POST['defensa_porcentaje'] ?? [];
 
     $stmt = $db->prepare(
         'UPDATE guerra_participaciones
-         SET ataque1_estrellas=?, ataque1_porcentaje=?, ataque2_estrellas=?, ataque2_porcentaje=?,
-             defensa_estrellas=?, defensa_porcentaje=?
+         SET ataque1_estrellas=?, ataque1_porcentaje=?, ataque2_estrellas=?, ataque2_porcentaje=?
          WHERE guerra_id=? AND jugador_id=?'
     );
 
@@ -66,8 +63,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_participation'])
             ($a1pct[$jid] ?? '') !== '' ? (float) $a1pct[$jid] : null,
             ($a2est[$jid] ?? '') !== '' ? (int) $a2est[$jid] : null,
             ($a2pct[$jid] ?? '') !== '' ? (float) $a2pct[$jid] : null,
-            ($defest[$jid] ?? '') !== '' ? (int) $defest[$jid] : null,
-            ($defpct[$jid] ?? '') !== '' ? (float) $defpct[$jid] : null,
             $id,
             (int) $jid,
         ]);
@@ -289,78 +284,119 @@ function toggleAllPlayers(checked) {
         <p>No hay jugadores en esta guerra.</p>
     </div>
 <?php else: ?>
+    <div class="card mb-3">
+        <div class="card-body py-2">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-surface border-secondary text-muted"><i class="bi bi-funnel"></i></span>
+                        <input type="text" id="participationFilter" class="form-control bg-surface border-secondary text-white" placeholder="Filtrar por jugador...">
+                    </div>
+                </div>
+                <div class="col-md-6 text-end d-none d-md-block">
+                    <span class="text-muted small">Mostrando <span id="visibleCount"><?= count($participaciones) ?></span> de <?= count($participaciones) ?> jugadores</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <form method="POST">
         <?= csrfField() ?>
         <input type="hidden" name="save_participation" value="1">
 
-        <div class="row g-3">
-            <?php foreach ($participaciones as $p): ?>
-                <div class="col-md-6 col-lg-4">
-                    <div class="participation-card">
-                        <div class="player-name d-flex justify-content-between align-items-center">
-                            <span><?= clean($p['usuario']) ?> <small class="text-muted"><?= clean($p['usuario']) ?></small></span>
-                            <a href="guerra_detalle?id=<?= $id ?>&remove=<?= $p['jugador_id'] ?>&csrf_token=<?= csrfToken() ?>"
-                               class="btn btn-sm btn-danger py-0 px-1" title="Remover"
-                               data-confirm="¿Remover a <?= clean($p['usuario']) ?>?">
-                                <i class="bi bi-x"></i>
-                            </a>
-                        </div>
-
-                        <div class="row g-2">
-                            <div class="col-6">
-                                <label class="form-label">Ataque 1 ⭐</label>
-                                <select name="ataque1_estrellas[<?= $p['jugador_id'] ?>]" class="form-select">
-                                    <option value="">—</option>
-                                    <?php for ($s = 0; $s <= 3; $s++): ?>
-                                        <option value="<?= $s ?>" <?= $p['ataque1_estrellas'] !== null && (int)$p['ataque1_estrellas'] === $s ? 'selected' : '' ?>><?= $s ?>⭐</option>
-                                    <?php endfor; ?>
-                                </select>
-                            </div>
-                            <div class="col-6">
-                                <label class="form-label">% Destrucción</label>
-                                <input type="number" name="ataque1_porcentaje[<?= $p['jugador_id'] ?>]" class="form-control"
-                                       min="0" max="100" step="0.01" value="<?= $p['ataque1_porcentaje'] ?? '' ?>">
-                            </div>
-                            <div class="col-6">
-                                <label class="form-label">Ataque 2 ⭐</label>
-                                <select name="ataque2_estrellas[<?= $p['jugador_id'] ?>]" class="form-select">
-                                    <option value="">—</option>
-                                    <?php for ($s = 0; $s <= 3; $s++): ?>
-                                        <option value="<?= $s ?>" <?= $p['ataque2_estrellas'] !== null && (int)$p['ataque2_estrellas'] === $s ? 'selected' : '' ?>><?= $s ?>⭐</option>
-                                    <?php endfor; ?>
-                                </select>
-                            </div>
-                            <div class="col-6">
-                                <label class="form-label">% Destrucción</label>
-                                <input type="number" name="ataque2_porcentaje[<?= $p['jugador_id'] ?>]" class="form-control"
-                                       min="0" max="100" step="0.01" value="<?= $p['ataque2_porcentaje'] ?? '' ?>">
-                            </div>
-                            <div class="col-6">
-                                <label class="form-label">Defensa ⭐</label>
-                                <select name="defensa_estrellas[<?= $p['jugador_id'] ?>]" class="form-select">
-                                    <option value="">—</option>
-                                    <?php for ($s = 0; $s <= 3; $s++): ?>
-                                        <option value="<?= $s ?>" <?= $p['defensa_estrellas'] !== null && (int)$p['defensa_estrellas'] === $s ? 'selected' : '' ?>><?= $s ?>⭐</option>
-                                    <?php endfor; ?>
-                                </select>
-                            </div>
-                            <div class="col-6">
-                                <label class="form-label">% Defensa</label>
-                                <input type="number" name="defensa_porcentaje[<?= $p['jugador_id'] ?>]" class="form-control"
-                                       min="0" max="100" step="0.01" value="<?= $p['defensa_porcentaje'] ?? '' ?>">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            <?php endforeach; ?>
+        <div class="card">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" id="participationTable">
+                    <thead>
+                        <tr>
+                            <th>Jugador</th>
+                            <th style="width: 250px;">Ataque 1</th>
+                            <th style="width: 250px;">Ataque 2</th>
+                            <th class="text-end">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($participaciones as $p): ?>
+                        <tr class="participation-row" data-name="<?= strtolower(clean($p['usuario'])) ?>">
+                            <td>
+                                <div class="fw-bold"><?= clean($p['usuario']) ?></div>
+                                <small class="text-muted"><?= clean($p['usuario']) ?></small>
+                            </td>
+                            <td>
+                                <div class="row g-1">
+                                    <div class="col-6">
+                                        <select name="ataque1_estrellas[<?= $p['jugador_id'] ?>]" class="form-select form-select-sm">
+                                            <option value="">—</option>
+                                            <?php for ($s = 0; $s <= 3; $s++): ?>
+                                                <option value="<?= $s ?>" <?= $p['ataque1_estrellas'] !== null && (int)$p['ataque1_estrellas'] === $s ? 'selected' : '' ?>><?= $s ?> ⭐</option>
+                                            <?php endfor; ?>
+                                        </select>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="input-group input-group-sm">
+                                            <input type="number" name="ataque1_porcentaje[<?= $p['jugador_id'] ?>]" class="form-control"
+                                                   min="0" max="100" step="0.01" value="<?= $p['ataque1_porcentaje'] ?? '' ?>" placeholder="%">
+                                            <span class="input-group-text px-1">%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="row g-1">
+                                    <div class="col-6">
+                                        <select name="ataque2_estrellas[<?= $p['jugador_id'] ?>]" class="form-select form-select-sm">
+                                            <option value="">—</option>
+                                            <?php for ($s = 0; $s <= 3; $s++): ?>
+                                                <option value="<?= $s ?>" <?= $p['ataque2_estrellas'] !== null && (int)$p['ataque2_estrellas'] === $s ? 'selected' : '' ?>><?= $s ?> ⭐</option>
+                                            <?php endfor; ?>
+                                        </select>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="input-group input-group-sm">
+                                            <input type="number" name="ataque2_porcentaje[<?= $p['jugador_id'] ?>]" class="form-control"
+                                                   min="0" max="100" step="0.01" value="<?= $p['ataque2_porcentaje'] ?? '' ?>" placeholder="%">
+                                            <span class="input-group-text px-1">%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="text-end">
+                                <a href="guerra_detalle?id=<?= $id ?>&remove=<?= $p['jugador_id'] ?>&csrf_token=<?= csrfToken() ?>"
+                                   class="btn btn-sm btn-outline-danger" title="Remover"
+                                   data-confirm="¿Remover a <?= clean($p['usuario']) ?> de la guerra?">
+                                    <i class="bi bi-x-lg"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
         </div>
 
         <div class="mt-4 text-center">
-            <button type="submit" class="btn btn-primary btn-lg">
-                <i class="bi bi-check-lg"></i> Guardar Todas las Participaciones
+            <button type="submit" class="btn btn-primary btn-lg px-5">
+                <i class="bi bi-cloud-upload"></i> Guardar Participaciones
             </button>
         </div>
     </form>
+
+    <script>
+    document.getElementById('participationFilter').addEventListener('input', function(e) {
+        const q = e.target.value.toLowerCase();
+        let visible = 0;
+        document.querySelectorAll('.participation-row').forEach(row => {
+            const name = row.getAttribute('data-name');
+            if (name.includes(q)) {
+                row.style.display = '';
+                visible++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+        document.getElementById('visibleCount').textContent = visible;
+    });
+    </script>
 <?php endif; ?>
 
 <?php require __DIR__ . '/includes/footer.php'; ?>

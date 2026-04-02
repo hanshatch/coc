@@ -1,6 +1,11 @@
 {
   "version": 1,
   "skills": {
+    "n8n-workflow-patterns": {
+      "source": "czlonkowski/n8n-skills",
+      "sourceType": "github",
+      "computedHash": "49f2640d03fe805fd07dbafbcfb0a3664230b97b90a220a6b8c8504cf55f211d"
+    },
     "php-pro": {
       "source": "jeffallan/claude-skills",
       "sourceType": "github",
