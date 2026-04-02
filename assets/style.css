@@ -7,24 +7,24 @@
 
 /* ── Variables ──────────────────────────────────────────────── */
 :root {
-    --ct-bg:          #0b0e14;
-    --ct-surface:     #161b26;
-    --ct-surface2:    #212838;
-    --ct-border:      rgba(255, 255, 255, 0.06);
-    --ct-gold:        #f59e0b;
-    --ct-gold-hover:  #fbbf24;
-    --ct-gold-dark:   #d97706;
-    --ct-green:       #10b981;
-    --ct-red:         #ef4444;
-    --ct-blue:        #60a5fa;
-    --ct-purple:      #a78bfa;
-    --ct-cyan:        #2dd4bf;
-    --ct-text:        #f8fafc;
-    --ct-text-muted:  #94a3b8;
+    --ct-bg:          #0f1117;
+    --ct-surface:     #1a1d26;
+    --ct-surface2:    #242936;
+    --ct-border:      rgba(255, 255, 255, 0.05);
+    --ct-gold:        #c49b37;
+    --ct-gold-hover:  #a6822d;
+    --ct-gold-dark:   #8a6d25;
+    --ct-green:       #508d69;
+    --ct-red:         #a35252;
+    --ct-blue:        #5d8aa8;
+    --ct-purple:      #7a6ea3;
+    --ct-cyan:        #6c929c;
+    --ct-text:        #d1d5db;
+    --ct-text-muted:  #8b949e;
     --ct-sidebar-w:   260px;
     --ct-font-title:  'Rajdhani', sans-serif;
     --ct-font-body:   'Outfit', sans-serif;
-    --ct-glass:       rgba(11, 14, 20, 0.85);
+    --ct-glass:       rgba(15, 17, 23, 0.85);
 }
 
 /* ── Reset & Body ──────────────────────────────────────────── */

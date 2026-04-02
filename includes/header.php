@@ -26,7 +26,7 @@ $currentName = str_replace('.php', '', $currentPage);
     <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <!-- Custom Theme -->
-    <link href="assets/style.css?v=3.0" rel="stylesheet">
+    <link href="assets/style.css?v=4.0" rel="stylesheet">
 </head>
 <body>
 
