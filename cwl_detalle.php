@@ -74,7 +74,6 @@ foreach ($rawParticipaciones as $row) {
     if (!isset($jugadores[$jid])) {
         $jugadores[$jid] = [
             'nombre'   => $row['usuario'],
-            'tag'      => $row['usuario'],
             'rol_clan' => $row['rol_clan'],
             'dias'     => []
         ];
@@ -146,7 +145,7 @@ require __DIR__ . '/includes/header.php';
                                     <input type="checkbox" name="jugador_ids[]" value="<?= $j['id'] ?>" id="p_<?= $j['id'] ?>" class="btn-check participant-checkbox">
                                     <label class="btn btn-outline-surface w-100 text-start text-truncate d-flex justify-content-between align-items-center" for="p_<?= $j['id'] ?>">
                                         <span><i class="bi bi-person"></i> <?= clean($j['usuario']) ?></span>
-                                        <small class="text-muted opacity-50" style="font-size: 0.7rem;"><?= strtoupper($j['rol_clan']) ?></small>
+                                        <small class="text-muted opacity-50" style="font-size: 0.7rem;"><?= strtoupper($j['rol_clan'] ?? 'miembro') ?></small>
                                     </label>
                                 </div>
                             </div>
@@ -245,14 +244,14 @@ function toggleAllPlayers(checked) {
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach ($jugadores as $jid => $jdata): ?>
+                    <?php foreach ($jugadores as $jid => $jd): ?>
                     <tr>
                         <td>
-                            <div class="fw-bold"><?= clean($jdata['nombre']) ?></div>
-                            <small class="text-muted opacity-50" style="font-size: 0.7rem;"><?= strtoupper($jdata['rol_clan']) ?></small>
+                            <div class="fw-bold"><?= clean($jd['nombre']) ?></div>
+                            <small class="text-muted opacity-50" style="font-size: 0.7rem;"><?= strtoupper($jd['rol_clan'] ?? 'miembro') ?></small>
                         </td>
                         <?php for ($dia = 1; $dia <= 7; $dia++):
-                            $d = $jdata['dias'][$dia] ?? null;
+                            $d = $jd['dias'][$dia] ?? null;
                         ?>
                         <td class="text-center">
                             <div class="form-check form-check-inline mb-1">
