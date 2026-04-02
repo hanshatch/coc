@@ -342,8 +342,10 @@ function toggleAllPlayers(checked) {
                         <?php foreach ($participaciones as $p): ?>
                         <tr class="participation-row" data-name="<?= strtolower(clean($p['usuario'])) ?>">
                             <td>
-                                <div class="fw-bold"><?= clean($p['usuario']) ?></div>
-                                <small class="text-muted opacity-50" style="font-size: 0.75rem;"><?= strtoupper($p['rol_clan']) ?></small>
+                                <div class="fw-bold">
+                                    <?= clean($p['usuario']) ?>
+                                    <small class="text-muted fw-normal opacity-50 ms-1" style="font-size: 0.65rem;">(<?= strtoupper($p['rol_clan']) ?>)</small>
+                                </div>
                             </td>
                             <td>
                                 <div class="row g-1">

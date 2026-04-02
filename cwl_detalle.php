@@ -261,8 +261,10 @@ function toggleAllPlayers(checked) {
                         <td>
                             <div class="d-flex justify-content-between align-items-start">
                                 <div>
-                                    <div class="fw-bold text-nowrap"><?= clean($jd['nombre']) ?></div>
-                                    <small class="text-muted opacity-50" style="font-size: 0.65rem;"><?= strtoupper($jd['rol_clan'] ?? 'miembro') ?></small>
+                                    <div class="fw-bold text-nowrap">
+                                        <?= clean($jd['nombre']) ?>
+                                        <small class="text-muted fw-normal opacity-50 ms-1" style="font-size: 0.65rem;">(<?= strtoupper($jd['rol_clan'] ?? 'miembro') ?>)</small>
+                                    </div>
                                 </div>
                                 <a href="cwl_detalle?id=<?= $id ?>&remove=<?= $jid ?>&csrf_token=<?= csrfToken() ?>" 
                                    class="btn btn-sm btn-link p-1 text-danger opacity-50 hover-opacity-100" 
