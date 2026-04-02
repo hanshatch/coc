@@ -274,6 +274,9 @@ function toggleAllPlayers(checked) {
     background: var(--ct-border);
     border-radius: 10px;
 }
+.sortable { cursor: pointer; user-select: none; }
+.sortable:hover { background: rgba(255,255,255,0.05); }
+.text-gold { color: var(--ct-gold) !important; }
 </style>
 <?php endif; ?>
 
@@ -306,12 +309,18 @@ function toggleAllPlayers(checked) {
 
         <div class="card">
             <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0" id="participationTable">
+                <table class="table table-hover align-middle mb-0" id="participationTable" data-sort-col="" data-sort-dir="desc">
                     <thead>
                         <tr>
-                            <th>Jugador</th>
-                            <th style="width: 250px;">Ataque 1</th>
-                            <th style="width: 250px;">Ataque 2</th>
+                            <th onclick="sortPartTable(0)" class="sortable text-nowrap">
+                                Jugador <i class="bi bi-arrow-down-up small ms-1 text-muted"></i>
+                            </th>
+                            <th onclick="sortPartTable(1)" class="sortable text-nowrap" style="width: 250px;">
+                                Ataque 1 <i class="bi bi-arrow-down-up small ms-1 text-muted"></i>
+                            </th>
+                            <th onclick="sortPartTable(2)" class="sortable text-nowrap" style="width: 250px;">
+                                Ataque 2 <i class="bi bi-arrow-down-up small ms-1 text-muted"></i>
+                            </th>
                             <th class="text-end">Acciones</th>
                         </tr>
                     </thead>
@@ -396,6 +405,62 @@ function toggleAllPlayers(checked) {
         });
         document.getElementById('visibleCount').textContent = visible;
     });
+
+    function sortPartTable(columnIndex) {
+        const table = document.getElementById('participationTable');
+        const tbody = table.querySelector('tbody');
+        const rows = Array.from(tbody.querySelectorAll('.participation-row'));
+        const currentDir = table.getAttribute('data-sort-dir') || 'desc';
+        const currentCol = table.getAttribute('data-sort-col');
+        
+        let newDir = 'desc';
+        if (currentCol == columnIndex) {
+            newDir = (currentDir === 'asc') ? 'desc' : 'asc';
+        } else {
+            // Default to desc for attacks, asc for name
+            newDir = (columnIndex === 0) ? 'asc' : 'desc';
+        }
+        
+        table.setAttribute('data-sort-dir', newDir);
+        table.setAttribute('data-sort-col', columnIndex);
+
+        // Update icons
+        table.querySelectorAll('thead th i').forEach((icon, i) => {
+            icon.className = 'bi bi-arrow-down-up small ms-1 text-muted';
+            if (i == columnIndex) {
+                icon.className = newDir === 'asc' ? 'bi bi-sort-up small ms-1 text-gold' : 'bi bi-sort-down small ms-1 text-gold';
+            }
+        });
+
+        rows.sort((a, b) => {
+            let valA, valB;
+            if (columnIndex === 0) {
+                valA = a.querySelector('.fw-bold').textContent.trim().toLowerCase();
+                valB = b.querySelector('.fw-bold').textContent.trim().toLowerCase();
+            } else {
+                const attackNum = columnIndex;
+                const starsSelect  = a.querySelector(`select[name^="ataque${attackNum}_estrellas"]`);
+                const pctInput     = a.querySelector(`input[name^="ataque${attackNum}_porcentaje"]`);
+                const starsSelectB = b.querySelector(`select[name^="ataque${attackNum}_estrellas"]`);
+                const pctInputB    = b.querySelector(`input[name^="ataque${attackNum}_porcentaje"]`);
+
+                // We handle nulls as -1 to put them at the bottom if sorting desc
+                const starsA = starsSelect.value === "" ? -1 : parseInt(starsSelect.value);
+                const pctA   = parseFloat(pctInput.value) || 0;
+                const starsB = starsSelectB.value === "" ? -1 : parseInt(starsSelectB.value);
+                const pctB   = parseFloat(pctInputB.value) || 0;
+
+                valA = (starsA * 1000) + pctA;
+                valB = (starsB * 1000) + pctB;
+            }
+
+            if (valA === valB) return 0;
+            const res = valA < valB ? -1 : 1;
+            return newDir === 'asc' ? res : -res;
+        });
+
+        rows.forEach(row => tbody.appendChild(row));
+    }
     </script>
 <?php endif; ?>
 
