@@ -7,24 +7,24 @@
 
 /* ── Variables ──────────────────────────────────────────────── */
 :root {
-    --ct-bg:          #0a0c12;
-    --ct-surface:     #12151f;
-    --ct-surface2:    #1a1e2b;
-    --ct-border:      rgba(255, 255, 255, 0.08);
-    --ct-gold:        #eeb34b;
-    --ct-gold-hover:  #f5c46d;
-    --ct-gold-dark:   #d1902a;
-    --ct-green:       #2ecc71;
+    --ct-bg:          #4d433d;
+    --ct-surface:     #525c5a;
+    --ct-surface2:    #56877d;
+    --ct-border:      rgba(255, 255, 255, 0.12);
+    --ct-gold:        #bade57;
+    --ct-gold-hover:  #c9e67a;
+    --ct-gold-dark:   #8ccc81;
+    --ct-green:       #bade57;
     --ct-red:         #ff5e57;
-    --ct-blue:        #4dabf7;
+    --ct-blue:        #56877d;
     --ct-purple:      #a881fb;
-    --ct-cyan:        #1de9b6;
+    --ct-cyan:        #8ccc81;
     --ct-text:        #f1f3f5;
-    --ct-text-muted:  #9499ad;
+    --ct-text-muted:  #c5cad5;
     --ct-sidebar-w:   260px;
     --ct-font-title:  'Rajdhani', sans-serif;
     --ct-font-body:   'Outfit', sans-serif;
-    --ct-glass:       rgba(18, 21, 31, 0.7);
+    --ct-glass:       rgba(77, 67, 61, 0.7);
 }
 
 /* ── Reset & Body ──────────────────────────────────────────── */
@@ -182,9 +182,11 @@ a:hover { color: var(--ct-gold-hover); text-decoration: none; }
     --bs-table-bg: transparent;
     --bs-table-color: var(--ct-text);
     --bs-table-border-color: var(--ct-border);
-    --bs-table-hover-bg: rgba(238, 179, 75, 0.04);
+    --bs-table-hover-bg: rgba(238, 179, 75, 0.15);
     --bs-table-striped-bg: rgba(255, 255, 255, 0.015);
 }
+.border-primary { border-color: var(--ct-gold) !important; }
+.border-blue    { border-color: var(--ct-blue) !important; }
 
 .table thead th {
     font-family: var(--ct-font-title);

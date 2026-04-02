@@ -186,7 +186,7 @@ require __DIR__ . '/includes/header.php';
 
 <!-- Agregar jugadores -->
 <?php if (!empty($jugadoresDisp)): ?>
-<div class="card mb-4 border-primary">
+<div class="card mb-4">
     <div class="card-header d-flex justify-content-between align-items-center bg-surface2">
         <span class="text-gold"><i class="bi bi-person-plus-fill"></i> Seleccionar Participantes</span>
         <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#addPlayersForm">
