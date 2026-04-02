@@ -281,17 +281,17 @@ function toggleAllPlayers(checked) {
                             <div class="d-flex flex-column align-items-center gap-1">
                                 <input type="checkbox" name="participo[<?= $jid ?>][<?= $dia ?>]" value="1"
                                        class="form-check-input m-0" <?= ($d && $d['participo']) ? 'checked' : '' ?>>
+                                <select name="estrellas[<?= $jid ?>][<?= $dia ?>]" class="form-select form-select-sm p-1 text-center" style="width: 80px; font-size: 0.75rem;">
+                                    <option value="">—</option>
+                                    <?php for ($s = 0; $s <= 3; $s++): ?>
+                                        <option value="<?= $s ?>" <?= ($d && $d['estrellas'] !== null && (int)$d['estrellas'] === $s) ? 'selected' : '' ?>><?= $s ?> ⭐</option>
+                                    <?php endfor; ?>
+                                </select>
                                 <div class="input-group input-group-sm" style="width: 80px;">
-                                    <span class="input-group-text p-1 text-gold"><i class="bi bi-star-fill small"></i></span>
-                                    <input type="number" name="estrellas[<?= $jid ?>][<?= $dia ?>]" 
-                                           class="form-control p-1 text-center" min="0" max="3" placeholder="3"
-                                           value="<?= $d['estrellas'] ?? '' ?>">
-                                </div>
-                                <div class="input-group input-group-sm" style="width: 80px;">
-                                    <span class="input-group-text p-1 text-muted" style="font-size: 0.7rem">%</span>
                                     <input type="number" name="porcentaje[<?= $jid ?>][<?= $dia ?>]" 
-                                           class="form-control p-1 text-center" min="0" max="100" step="0.01" placeholder="100"
+                                           class="form-control p-1 text-center" min="0" max="100" step="0.01" placeholder="0"
                                            value="<?= $d['porcentaje'] ?? '' ?>">
+                                    <span class="input-group-text px-1 text-muted" style="font-size: 0.6rem">%</span>
                                 </div>
                             </div>
                         </td>
