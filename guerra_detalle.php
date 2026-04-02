@@ -88,7 +88,7 @@ if (isset($_GET['remove']) && isset($_GET['csrf_token'])) {
 
 // ── Datos ─────────────────────────────────────────────────────
 $participaciones = $db->prepare(
-    'SELECT gp.*, j.usuario, j.usuario
+    'SELECT gp.*, j.usuario, j.rol_clan
      FROM guerra_participaciones gp
      JOIN jugadores j ON gp.jugador_id = j.id
      WHERE gp.guerra_id = ?
@@ -99,7 +99,7 @@ $participaciones = $participaciones->fetchAll();
 
 // Jugadores activos no en esta guerra
 $jugadoresDisp = $db->prepare(
-    'SELECT id, usuario FROM jugadores
+    'SELECT id, usuario, rol_clan FROM jugadores
      WHERE activo = 1 AND id NOT IN (SELECT jugador_id FROM guerra_participaciones WHERE guerra_id = ?)
      ORDER BY usuario ASC'
 );
@@ -188,7 +188,10 @@ require __DIR__ . '/includes/header.php';
 <?php if (!empty($jugadoresDisp)): ?>
 <div class="card mb-4">
     <div class="card-header d-flex justify-content-between align-items-center bg-surface2">
-        <span class="text-gold"><i class="bi bi-person-plus-fill"></i> Seleccionar Participantes</span>
+        <span class="text-gold">
+            <i class="bi bi-person-plus-fill"></i> Seleccionar Participantes
+            <small class="ms-2 text-muted">(Seleccionados: <span id="selectedCount">0</span>)</small>
+        </span>
         <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#addPlayersForm">
             <i class="bi bi-chevron-down"></i> Panel de Selección
         </button>
@@ -219,9 +222,10 @@ require __DIR__ . '/includes/header.php';
                         <?php foreach ($jugadoresDisp as $j): ?>
                             <div class="col-6 col-md-4 col-lg-3 player-item" data-name="<?= strtolower(clean($j['usuario'])) ?>">
                                 <div class="player-checkbox-card">
-                                    <input type="checkbox" name="jugador_ids[]" value="<?= $j['id'] ?>" id="p_<?= $j['id'] ?>" class="btn-check">
-                                    <label class="btn btn-outline-surface w-100 text-start text-truncate" for="p_<?= $j['id'] ?>">
-                                        <i class="bi bi-person"></i> <?= clean($j['usuario']) ?>
+                                    <input type="checkbox" name="jugador_ids[]" value="<?= $j['id'] ?>" id="p_<?= $j['id'] ?>" class="btn-check participant-checkbox">
+                                    <label class="btn btn-outline-surface w-100 text-start text-truncate d-flex justify-content-between align-items-center" for="p_<?= $j['id'] ?>">
+                                        <span><i class="bi bi-person"></i> <?= clean($j['usuario']) ?></span>
+                                        <small class="text-muted opacity-50" style="font-size: 0.7rem;"><?= strtoupper($j['rol_clan']) ?></small>
                                     </label>
                                 </div>
                             </div>
@@ -238,6 +242,15 @@ require __DIR__ . '/includes/header.php';
 </div>
 
 <script>
+function updateSelectionCounter() {
+    const checked = document.querySelectorAll('.participant-checkbox:checked').length;
+    document.getElementById('selectedCount').textContent = checked;
+}
+
+document.querySelectorAll('.participant-checkbox').forEach(cb => {
+    cb.addEventListener('change', updateSelectionCounter);
+});
+
 document.getElementById('playerSearch').addEventListener('input', function(e) {
     const q = e.target.value.toLowerCase();
     document.querySelectorAll('.player-item').forEach(item => {
@@ -248,10 +261,11 @@ document.getElementById('playerSearch').addEventListener('input', function(e) {
 
 function toggleAllPlayers(checked) {
     document.querySelectorAll('#playerGrid input[type="checkbox"]').forEach(cb => {
-        if (cb.parentElement.parentElement.style.display !== 'none') {
+        if (cb.closest('.player-item').style.display !== 'none') {
             cb.checked = checked;
         }
     });
+    updateSelectionCounter();
 }
 </script>
 
@@ -329,7 +343,7 @@ function toggleAllPlayers(checked) {
                         <tr class="participation-row" data-name="<?= strtolower(clean($p['usuario'])) ?>">
                             <td>
                                 <div class="fw-bold"><?= clean($p['usuario']) ?></div>
-                                <small class="text-muted"><?= clean($p['usuario']) ?></small>
+                                <small class="text-muted opacity-50" style="font-size: 0.75rem;"><?= strtoupper($p['rol_clan']) ?></small>
                             </td>
                             <td>
                                 <div class="row g-1">

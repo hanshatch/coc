@@ -58,7 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_participation'])
 
 // ── Datos ─────────────────────────────────────────────────────
 $rawParticipaciones = $db->prepare(
-    'SELECT cp.*, j.usuario
+    'SELECT cp.*, j.usuario, j.rol_clan
      FROM cwl_participaciones cp
      JOIN jugadores j ON cp.jugador_id = j.id
      WHERE cp.temporada_id = ?
@@ -72,14 +72,19 @@ $jugadores = [];
 foreach ($rawParticipaciones as $row) {
     $jid = $row['jugador_id'];
     if (!isset($jugadores[$jid])) {
-        $jugadores[$jid] = ['nombre' => $row['usuario'], 'tag' => $row['usuario'], 'dias' => []];
+        $jugadores[$jid] = [
+            'nombre'   => $row['usuario'],
+            'tag'      => $row['usuario'],
+            'rol_clan' => $row['rol_clan'],
+            'dias'     => []
+        ];
     }
     $jugadores[$jid]['dias'][$row['dia']] = $row;
 }
 
 // Jugadores disponibles
 $jugadoresDisp = $db->prepare(
-    'SELECT id, usuario FROM jugadores
+    'SELECT id, usuario, rol_clan FROM jugadores
      WHERE activo = 1 AND id NOT IN (SELECT DISTINCT jugador_id FROM cwl_participaciones WHERE temporada_id = ?)
      ORDER BY usuario ASC'
 );
@@ -98,13 +103,16 @@ require __DIR__ . '/includes/header.php';
 <div class="row g-3 mb-4">
     <div class="col-md-4"><div class="stat-card"><div class="stat-icon">🏆</div><div class="stat-value"><?= clean($temp['liga'] ?? '—') ?></div><div class="stat-label">Liga</div></div></div>
     <div class="col-md-4"><div class="stat-card"><div class="stat-icon">🏅</div><div class="stat-value"><?= $temp['posicion_final'] ? $temp['posicion_final'] . '°' : '—' ?></div><div class="stat-label">Posición Final</div></div></div>
-    <div class="col-md-4"><div class="stat-card"><div class="stat-icon">👥</div><div class="stat-value"><?= count($jugadores) ?></div><div class="stat-label">Jugadores en Roster</div></div></div>
+    <div class="col-md-4"><div class="stat-card"><div class="stat-icon">👥</div><div class="stat-value"><?= count($jugadores) ?> / <?= (int) $temp['tamano'] ?></div><div class="stat-label">Jugadores en Roster</div></div></div>
 </div>
 
 <?php if (!empty($jugadoresDisp)): ?>
-<div class="card mb-4 mb-5">
+<div class="card mb-4 mb-5 border-primary">
     <div class="card-header d-flex justify-content-between align-items-center bg-surface2">
-        <span class="text-gold"><i class="bi bi-person-plus-fill"></i> Seleccionar Participantes</span>
+        <span class="text-gold">
+            <i class="bi bi-person-plus-fill"></i> Seleccionar Participantes 
+            <small class="ms-2 text-muted">(Seleccionados: <span id="selectedCount">0</span> / <?= ($temp['tamano'] - count($jugadores)) ?>)</small>
+        </span>
         <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#addPlayersForm">
             <i class="bi bi-chevron-down"></i> Panel de Selección
         </button>
@@ -135,9 +143,10 @@ require __DIR__ . '/includes/header.php';
                         <?php foreach ($jugadoresDisp as $j): ?>
                             <div class="col-6 col-md-4 col-lg-3 player-item" data-name="<?= strtolower(clean($j['usuario'])) ?>">
                                 <div class="player-checkbox-card">
-                                    <input type="checkbox" name="jugador_ids[]" value="<?= $j['id'] ?>" id="p_<?= $j['id'] ?>" class="btn-check">
-                                    <label class="btn btn-outline-surface w-100 text-start text-truncate" for="p_<?= $j['id'] ?>">
-                                        <i class="bi bi-person"></i> <?= clean($j['usuario']) ?>
+                                    <input type="checkbox" name="jugador_ids[]" value="<?= $j['id'] ?>" id="p_<?= $j['id'] ?>" class="btn-check participant-checkbox">
+                                    <label class="btn btn-outline-surface w-100 text-start text-truncate d-flex justify-content-between align-items-center" for="p_<?= $j['id'] ?>">
+                                        <span><i class="bi bi-person"></i> <?= clean($j['usuario']) ?></span>
+                                        <small class="text-muted opacity-50" style="font-size: 0.7rem;"><?= strtoupper($j['rol_clan']) ?></small>
                                     </label>
                                 </div>
                             </div>
@@ -156,6 +165,25 @@ require __DIR__ . '/includes/header.php';
 </div>
 
 <script>
+const selectionLimit = <?= (int) ($temp['tamano'] - count($jugadores)) ?>;
+
+function updateSelectionCounter() {
+    const checked = document.querySelectorAll('.participant-checkbox:checked').length;
+    document.getElementById('selectedCount').textContent = checked;
+    
+    // Disable unchecked if limit reached
+    const unchecked = document.querySelectorAll('.participant-checkbox:not(:checked)');
+    if (checked >= selectionLimit) {
+        unchecked.forEach(cb => cb.disabled = true);
+    } else {
+        unchecked.forEach(cb => cb.disabled = false);
+    }
+}
+
+document.querySelectorAll('.participant-checkbox').forEach(cb => {
+    cb.addEventListener('change', updateSelectionCounter);
+});
+
 document.getElementById('playerSearch')?.addEventListener('input', function(e) {
     const q = e.target.value.toLowerCase();
     document.querySelectorAll('.player-item').forEach(item => {
@@ -165,11 +193,21 @@ document.getElementById('playerSearch')?.addEventListener('input', function(e) {
 });
 
 function toggleAllPlayers(checked) {
-    document.querySelectorAll('#playerGrid input[type="checkbox"]').forEach(cb => {
+    const checkboxes = document.querySelectorAll('#playerGrid input[type="checkbox"]');
+    let count = document.querySelectorAll('.participant-checkbox:checked').length;
+    
+    checkboxes.forEach(cb => {
         if (cb.closest('.player-item').style.display !== 'none') {
-            cb.checked = checked;
+            if (checked && count < selectionLimit && !cb.checked) {
+                cb.checked = true;
+                count++;
+            } else if (!checked) {
+                cb.checked = false;
+                count = 0;
+            }
         }
     });
+    updateSelectionCounter();
 }
 </script>
 
@@ -200,7 +238,7 @@ function toggleAllPlayers(checked) {
             <table class="table table-hover mb-0" style="font-size:.85rem">
                 <thead>
                     <tr>
-                        <th>Jugador</th>
+                        <th style="min-width: 150px;">Jugador</th>
                         <?php for ($dia = 1; $dia <= 7; $dia++): ?>
                             <th class="text-center">Día <?= $dia ?></th>
                         <?php endfor; ?>
@@ -209,7 +247,10 @@ function toggleAllPlayers(checked) {
                 <tbody>
                     <?php foreach ($jugadores as $jid => $jdata): ?>
                     <tr>
-                        <td><strong><?= clean($jdata['usuario']) ?></strong></td>
+                        <td>
+                            <div class="fw-bold"><?= clean($jdata['nombre']) ?></div>
+                            <small class="text-muted opacity-50" style="font-size: 0.7rem;"><?= strtoupper($jdata['rol_clan']) ?></small>
+                        </td>
                         <?php for ($dia = 1; $dia <= 7; $dia++):
                             $d = $jdata['dias'][$dia] ?? null;
                         ?>
