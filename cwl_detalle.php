@@ -102,27 +102,93 @@ require __DIR__ . '/includes/header.php';
 </div>
 
 <?php if (!empty($jugadoresDisp)): ?>
-<div class="card mb-4">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <span><i class="bi bi-person-plus"></i> Agregar al Roster</span>
-        <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#addPlayersForm"><i class="bi bi-plus-lg"></i></button>
+<div class="card mb-4 mb-5">
+    <div class="card-header d-flex justify-content-between align-items-center bg-surface2">
+        <span class="text-gold"><i class="bi bi-person-plus-fill"></i> Seleccionar Participantes</span>
+        <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#addPlayersForm">
+            <i class="bi bi-chevron-down"></i> Panel de Selección
+        </button>
     </div>
-    <div class="collapse" id="addPlayersForm"><div class="card-body">
-        <form method="POST">
-            <?= csrfField() ?><input type="hidden" name="add_players" value="1">
-            <div class="row g-2 align-items-end">
-                <div class="col-md-8">
-                    <select name="jugador_ids[]" class="form-select" multiple size="5">
-                        <?php foreach ($jugadoresDisp as $j): ?>
-                            <option value="<?= $j['id'] ?>"><?= clean($j['usuario']) ?></option>
-                        <?php endforeach; ?>
-                    </select>
+    <div class="collapse" id="addPlayersForm">
+        <div class="card-body">
+            <form method="POST">
+                <?= csrfField() ?>
+                <input type="hidden" name="add_players" value="1">
+                
+                <!-- Buscador y Acciones -->
+                <div class="row g-2 mb-3">
+                    <div class="col-md-8">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text bg-surface border-secondary text-muted"><i class="bi bi-search"></i></span>
+                            <input type="text" id="playerSearch" class="form-control bg-surface border-secondary text-white" placeholder="Filtrar jugadores por usuario...">
+                        </div>
+                    </div>
+                    <div class="col-md-4 d-flex gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-secondary w-100" onclick="toggleAllPlayers(true)">Todos</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary w-100" onclick="toggleAllPlayers(false)">Ninguno</button>
+                    </div>
                 </div>
-                <div class="col-md-4"><button type="submit" class="btn btn-primary w-100"><i class="bi bi-plus-lg"></i> Agregar</button></div>
-            </div>
-        </form>
-    </div></div>
+
+                <!-- Rejilla de Jugadores -->
+                <div class="player-selection-grid mb-3" style="max-height: 250px; overflow-y: auto;">
+                    <div class="row g-2" id="playerGrid">
+                        <?php foreach ($jugadoresDisp as $j): ?>
+                            <div class="col-6 col-md-4 col-lg-3 player-item" data-name="<?= strtolower(clean($j['usuario'])) ?>">
+                                <div class="player-checkbox-card">
+                                    <input type="checkbox" name="jugador_ids[]" value="<?= $j['id'] ?>" id="p_<?= $j['id'] ?>" class="btn-check">
+                                    <label class="btn btn-outline-surface w-100 text-start text-truncate" for="p_<?= $j['id'] ?>">
+                                        <i class="bi bi-person"></i> <?= clean($j['usuario']) ?>
+                                    </label>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+
+                <div class="text-end">
+                    <button type="submit" class="btn btn-primary px-4" style="background-color: var(--ct-gold); border-color: var(--ct-gold); color: #000; font-weight: bold;">
+                        <i class="bi bi-plus-lg"></i> AGREGAR AL ESCUADRÓN
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
+
+<script>
+document.getElementById('playerSearch')?.addEventListener('input', function(e) {
+    const q = e.target.value.toLowerCase();
+    document.querySelectorAll('.player-item').forEach(item => {
+        const name = item.getAttribute('data-name');
+        item.style.display = name.includes(q) ? 'block' : 'none';
+    });
+});
+
+function toggleAllPlayers(checked) {
+    document.querySelectorAll('#playerGrid input[type="checkbox"]').forEach(cb => {
+        if (cb.closest('.player-item').style.display !== 'none') {
+            cb.checked = checked;
+        }
+    });
+}
+</script>
+
+<style>
+.btn-outline-surface {
+    color: var(--ct-text);
+    border-color: var(--ct-border);
+    background: var(--ct-surface);
+    font-size: 0.9rem;
+}
+.btn-check:checked + .btn-outline-surface {
+    background: rgba(245, 158, 11, 0.15);
+    border-color: var(--ct-gold);
+    color: var(--ct-gold);
+}
+.player-selection-grid::-webkit-scrollbar { width: 6px; }
+.player-selection-grid::-webkit-scrollbar-thumb { background: var(--ct-border); border-radius: 10px; }
+.text-gold { color: var(--ct-gold) !important; }
+</style>
 <?php endif; ?>
 
 <?php if (empty($jugadores)): ?>
