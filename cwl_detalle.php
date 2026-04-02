@@ -58,7 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_participation'])
 
 // ── Datos ─────────────────────────────────────────────────────
 $rawParticipaciones = $db->prepare(
-    'SELECT cp.*, j.usuario, j.usuario
+    'SELECT cp.*, j.usuario
      FROM cwl_participaciones cp
      JOIN jugadores j ON cp.jugador_id = j.id
      WHERE cp.temporada_id = ?
@@ -79,9 +79,9 @@ foreach ($rawParticipaciones as $row) {
 
 // Jugadores disponibles
 $jugadoresDisp = $db->prepare(
-    'SELECT id, nombre, tag FROM jugadores
+    'SELECT id, usuario FROM jugadores
      WHERE activo = 1 AND id NOT IN (SELECT DISTINCT jugador_id FROM cwl_participaciones WHERE temporada_id = ?)
-     ORDER BY nombre ASC'
+     ORDER BY usuario ASC'
 );
 $jugadoresDisp->execute([$id]);
 $jugadoresDisp = $jugadoresDisp->fetchAll();
@@ -114,7 +114,7 @@ require __DIR__ . '/includes/header.php';
                 <div class="col-md-8">
                     <select name="jugador_ids[]" class="form-select" multiple size="5">
                         <?php foreach ($jugadoresDisp as $j): ?>
-                            <option value="<?= $j['id'] ?>"><?= clean($j['usuario']) ?> (<?= clean($j['usuario']) ?>)</option>
+                            <option value="<?= $j['id'] ?>"><?= clean($j['usuario']) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>

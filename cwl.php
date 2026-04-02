@@ -133,12 +133,13 @@ require __DIR__ . '/includes/header.php';
 <?php else: ?>
     <div class="card"><div class="table-responsive">
         <table class="table table-hover mb-0">
-            <thead><tr><th>Mes</th><th>Liga</th><th class="text-center">Posición</th><th class="text-center">Participantes</th><th class="text-end">Acciones</th></tr></thead>
+            <thead><tr><th>Mes</th><th>Liga</th><th class="text-center">Tamaño</th><th class="text-center">Posición</th><th class="text-center">Participantes</th><th class="text-end">Acciones</th></tr></thead>
             <tbody>
                 <?php foreach ($temps as $t): ?>
                 <tr>
                     <td><strong><?= clean($t['mes']) ?></strong></td>
                     <td><?= clean($t['liga'] ?? '—') ?></td>
+                    <td class="text-center"><?= $t['tamano'] == 30 ? '30 vs 30' : '15 vs 15' ?></td>
                     <td class="text-center"><?= $t['posicion_final'] ? $t['posicion_final'] . '°' : '—' ?></td>
                     <td class="text-center"><?= (int) $t['participantes'] ?></td>
                     <td class="text-end">
