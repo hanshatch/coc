@@ -56,6 +56,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_participation'])
     header('Location: cwl_detalle?id=' . $id); exit;
 }
 
+// ── Remover jugador del roster ────────────────────────────────
+if (isset($_GET['remove'])) {
+    verifyCsrf();
+    $removeJid = (int) $_GET['remove'];
+    $db->prepare('DELETE FROM cwl_participaciones WHERE temporada_id=? AND jugador_id=?')
+       ->execute([$id, $removeJid]);
+    logActivity('eliminar', 'cwl_participaciones', $id, 'Jugador removido del roster: ' . $removeJid);
+    setFlash('success', 'Jugador removido de esta temporada.');
+    header('Location: cwl_detalle?id=' . $id); exit;
+}
+
 // ── Datos ─────────────────────────────────────────────────────
 $rawParticipaciones = $db->prepare(
     'SELECT cp.*, j.usuario, j.rol_clan
@@ -224,7 +235,8 @@ function toggleAllPlayers(checked) {
 }
 .player-selection-grid::-webkit-scrollbar { width: 6px; }
 .player-selection-grid::-webkit-scrollbar-thumb { background: var(--ct-border); border-radius: 10px; }
-.text-gold { color: var(--ct-gold) !important; }
+.hover-opacity-100:hover { opacity: 1 !important; }
+.text-nowrap { white-space: nowrap !important; }
 </style>
 <?php endif; ?>
 
@@ -247,23 +259,39 @@ function toggleAllPlayers(checked) {
                     <?php foreach ($jugadores as $jid => $jd): ?>
                     <tr>
                         <td>
-                            <div class="fw-bold"><?= clean($jd['nombre']) ?></div>
-                            <small class="text-muted opacity-50" style="font-size: 0.7rem;"><?= strtoupper($jd['rol_clan'] ?? 'miembro') ?></small>
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <div class="fw-bold text-nowrap"><?= clean($jd['nombre']) ?></div>
+                                    <small class="text-muted opacity-50" style="font-size: 0.65rem;"><?= strtoupper($jd['rol_clan'] ?? 'miembro') ?></small>
+                                </div>
+                                <a href="cwl_detalle?id=<?= $id ?>&remove=<?= $jid ?>&csrf_token=<?= csrfToken() ?>" 
+                                   class="btn btn-link btn-sm p-0 text-danger opacity-25 hover-opacity-100" 
+                                   title="Remover del Roster"
+                                   onclick="return confirm('¿Remover a <?= clean($jd['nombre']) ?> de esta temporada?')">
+                                    <i class="bi bi-x-circle"></i>
+                                </a>
+                            </div>
                         </td>
                         <?php for ($dia = 1; $dia <= 7; $dia++):
                             $d = $jd['dias'][$dia] ?? null;
                         ?>
-                        <td class="text-center">
-                            <div class="form-check form-check-inline mb-1">
+                        <td class="text-center p-1" style="min-width: 90px;">
+                            <div class="d-flex flex-column align-items-center gap-1">
                                 <input type="checkbox" name="participo[<?= $jid ?>][<?= $dia ?>]" value="1"
-                                       class="form-check-input" <?= ($d && $d['participo']) ? 'checked' : '' ?>>
+                                       class="form-check-input m-0" <?= ($d && $d['participo']) ? 'checked' : '' ?>>
+                                <div class="input-group input-group-sm" style="width: 80px;">
+                                    <span class="input-group-text p-1 text-gold"><i class="bi bi-star-fill small"></i></span>
+                                    <input type="number" name="estrellas[<?= $jid ?>][<?= $dia ?>]" 
+                                           class="form-control p-1 text-center" min="0" max="3" placeholder="3"
+                                           value="<?= $d['estrellas'] ?? '' ?>">
+                                </div>
+                                <div class="input-group input-group-sm" style="width: 80px;">
+                                    <span class="input-group-text p-1 text-muted" style="font-size: 0.7rem">%</span>
+                                    <input type="number" name="porcentaje[<?= $jid ?>][<?= $dia ?>]" 
+                                           class="form-control p-1 text-center" min="0" max="100" step="0.01" placeholder="100"
+                                           value="<?= $d['porcentaje'] ?? '' ?>">
+                                </div>
                             </div>
-                            <input type="number" name="estrellas[<?= $jid ?>][<?= $dia ?>]" class="form-control form-control-sm mb-1"
-                                   min="0" max="3" placeholder="⭐" style="width:60px;display:inline-block"
-                                   value="<?= $d['estrellas'] ?? '' ?>">
-                            <input type="number" name="porcentaje[<?= $jid ?>][<?= $dia ?>]" class="form-control form-control-sm"
-                                   min="0" max="100" step="0.01" placeholder="%" style="width:65px;display:inline-block"
-                                   value="<?= $d['porcentaje'] ?? '' ?>">
                         </td>
                         <?php endfor; ?>
                     </tr>
