@@ -262,7 +262,7 @@ function toggleAllPlayers(checked) {
     <form method="POST">
         <?= csrfField() ?><input type="hidden" name="save_participation" value="1">
         <div class="card"><div class="table-responsive">
-            <table class="table table-hover mb-0" style="font-size:.85rem">
+            <table id="rosterTable" class="table table-hover mb-0" style="font-size:.85rem">
                 <thead>
                     <tr>
                         <th style="min-width: 200px;">Jugador</th>
@@ -273,7 +273,7 @@ function toggleAllPlayers(checked) {
                 </thead>
                 <tbody>
                     <?php foreach ($jugadores as $jid => $jd): ?>
-                    <tr>
+                    <tr data-name="<?= strtolower(clean($jd['nombre'])) ?>">
                         <td>
                             <div class="d-flex justify-content-between align-items-start">
                                 <div>
