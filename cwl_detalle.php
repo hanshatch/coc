@@ -41,27 +41,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_participation'])
          WHERE temporada_id=? AND jugador_id=? AND dia=?'
     );
 
-    // Intentar actualizar ataques por separado (requiere columna en BD)
-    $stmtAtq = null;
+    // Intentar actualizar ataques y bonus por separado (requieren columnas en BD)
+    $stmtExtras = null;
     try {
-        $stmtAtq = $db->prepare(
-            'UPDATE cwl_participaciones SET ataques=?
+        $stmtExtras = $db->prepare(
+            'UPDATE cwl_participaciones SET ataques=?, bonus=?
              WHERE temporada_id=? AND jugador_id=? AND dia=?'
         );
-    } catch (\PDOException $e) { /* columna aún no existe */ }
+    } catch (\PDOException $e) { /* columnas aún no existen */ }
 
     // Iteramos sobre todos los jugadores usando estrellas como referencia (los checkboxes no se envían si están desmarcados)
     $todosJids = array_unique(array_merge(array_keys($estrellas), array_keys($porcentaje), array_keys($ataques)));
 
+    $bonuses = $_POST['bonus'] ?? [];
+
     foreach ($todosJids as $jid) {
         $jid = (int) $jid;
-        $par = isset($participo[$jid]) ? 1 : 0;
         $est = ($estrellas[$jid] ?? '') !== '' ? min(21, max(0, (int) $estrellas[$jid])) : null;
+        
+        // Auto-marcar participación si tiene estrellas
+        $par = (isset($participo[$jid]) || $est > 0) ? 1 : 0;
+        
         $pct = ($porcentaje[$jid] ?? '') !== '' ? min(700, max(0, (int) $porcentaje[$jid])) : null;
         $atq = ($ataques[$jid]  ?? '') !== '' ? min(7,   max(0, (int) $ataques[$jid]))  : null;
+        $bon = isset($bonuses[$jid]) ? 1 : 0;
+
         $stmt->execute([$par, $est, $pct, $id, $jid, 1]);
-        if ($stmtAtq) {
-            $stmtAtq->execute([$atq, $id, $jid, 1]);
+        if ($stmtExtras) {
+            $stmtExtras->execute([$atq, $bon, $id, $jid, 1]);
         }
     }
 
@@ -104,6 +111,7 @@ foreach ($rawParticipaciones as $row) {
         'porcentaje' => $row['porcentaje'],
         'participo'  => $row['participo'],
         'ataques'    => $row['ataques'] ?? null,
+        'bonus'      => $row['bonus'] ?? 0,
     ];
 }
 
@@ -289,6 +297,7 @@ function toggleAllPlayers(checked) {
                         <th class="text-center">Estrellas Totales</th>
                         <th class="text-center">% Destrucción</th>
                         <th class="text-center"># Ataques</th>
+                        <th class="text-center text-gold"><i class="bi bi-gift-fill"></i> Bonus</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -336,6 +345,11 @@ function toggleAllPlayers(checked) {
                                 <input type="number" name="ataques[<?= $jid ?>]" 
                                        class="form-control text-center cwl-ataques" min="0" max="7" placeholder="0-7"
                                        value="<?= $jd['ataques'] ?? '' ?>">
+                            </div>
+                        </td>
+                        <td class="text-center">
+                            <div class="form-check form-switch d-inline-block">
+                                <input class="form-check-input" type="checkbox" name="bonus[<?= $jid ?>]" value="1" <?= $jd['bonus'] ? 'checked' : '' ?>>
                             </div>
                         </td>
                     </tr>
