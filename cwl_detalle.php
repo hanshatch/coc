@@ -239,6 +239,26 @@ function toggleAllPlayers(checked) {
 <?php if (empty($jugadores)): ?>
     <div class="empty-state"><div class="empty-icon">🏆</div><p>No hay jugadores en el roster de esta temporada.</p></div>
 <?php else: ?>
+    <!-- Filtro de la tabla -->
+    <div class="card mb-3">
+        <div class="card-body py-2">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-surface border-secondary text-muted"><i class="bi bi-funnel"></i></span>
+                        <input type="text" id="rosterFilter" class="form-control bg-surface border-secondary text-white" placeholder="Filtrar por nombre...">
+                        <button class="btn btn-outline-secondary btn-sm" type="button" onclick="document.getElementById('rosterFilter').value=''; filterRoster();">
+                            <i class="bi bi-x"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-6 text-end d-none d-md-block">
+                    <span class="text-muted small">Mostrando <span id="rosterVisible"><?= count($jugadores) ?></span> de <?= count($jugadores) ?> jugadores</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <form method="POST">
         <?= csrfField() ?><input type="hidden" name="save_participation" value="1">
         <div class="card"><div class="table-responsive">
