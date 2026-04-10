@@ -56,7 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_participation'])
     foreach ($todosJids as $jid) {
         $jid = (int) $jid;
         $par = isset($participo[$jid]) ? 1 : 0;
-        $est = ($estrellas[$jid] ?? '') !== '' ? min(12, max(0, (int) $estrellas[$jid])) : null;
+        $est = ($estrellas[$jid] ?? '') !== '' ? min(21, max(0, (int) $estrellas[$jid])) : null;
         $pct = ($porcentaje[$jid] ?? '') !== '' ? min(700, max(0, (int) $porcentaje[$jid])) : null;
         $atq = ($ataques[$jid]  ?? '') !== '' ? min(7,   max(0, (int) $ataques[$jid]))  : null;
         $stmt->execute([$par, $est, $pct, $id, $jid, 1]);
@@ -318,7 +318,7 @@ function toggleAllPlayers(checked) {
                             <div class="input-group input-group-sm mx-auto" style="width: 100px;">
                                 <span class="input-group-text p-1 text-gold"><i class="bi bi-star-fill small"></i></span>
                                 <input type="number" name="estrellas[<?= $jid ?>]" 
-                                       class="form-control text-center cwl-estrellas" min="0" max="12" placeholder="0-12"
+                                       class="form-control text-center cwl-estrellas" min="0" max="21" placeholder="0-21"
                                        value="<?= $jd['estrellas'] ?? '' ?>">
                             </div>
                         </td>
@@ -370,9 +370,9 @@ document.querySelector('form[method="POST"]')?.addEventListener('submit', functi
 
     document.querySelectorAll('.cwl-estrellas').forEach(inp => {
         const v = inp.value;
-        if (v !== '' && (parseInt(v) < 0 || parseInt(v) > 12)) {
+        if (v !== '' && (parseInt(v) < 0 || parseInt(v) > 21)) {
             inp.classList.add('is-invalid');
-            errors.push('Estrellas debe estar entre 0 y 12.');
+            errors.push('Estrellas debe estar entre 0 y 21.');
         } else inp.classList.remove('is-invalid');
     });
 
