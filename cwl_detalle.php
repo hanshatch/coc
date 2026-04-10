@@ -321,4 +321,25 @@ function toggleAllPlayers(checked) {
     </form>
 <?php endif; ?>
 
+<script>
+function filterRoster() {
+    const q = document.getElementById('rosterFilter').value.toLowerCase();
+    const rows = document.querySelectorAll('#rosterTable tbody tr');
+    let visible = 0;
+    rows.forEach(row => {
+        const name = row.getAttribute('data-name') || '';
+        if (name.includes(q)) {
+            row.style.display = '';
+            visible++;
+        } else {
+            row.style.display = 'none';
+        }
+    });
+    const counter = document.getElementById('rosterVisible');
+    if (counter) counter.textContent = visible;
+}
+
+document.getElementById('rosterFilter')?.addEventListener('input', filterRoster);
+</script>
+
 <?php require __DIR__ . '/includes/footer.php'; ?>
