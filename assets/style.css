@@ -579,3 +579,57 @@ a:hover { color: var(--ct-gold-hover); text-decoration: none; }
 .ct-backdrop.show {
     display: block;
 }
+
+/* ============================================================
+   Premium UI Utilities (Theme Factory & Tailwind Specs)
+   ============================================================ */
+
+/* Glassmorphism Cards */
+.glass-card {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+}
+
+/* Smooth Transitions */
+.transition-all {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Hover States & Elevations */
+.hover-translate-y:hover {
+    transform: translateY(-2px);
+}
+
+/* Glow Effects */
+.shadow-glow {
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+.shadow-glow:hover {
+    box-shadow: 0 8px 25px rgba(196, 155, 55, 0.4);
+    transform: translateY(-2px);
+}
+
+/* Premium Inputs Focus Ring */
+.input-premium:focus {
+    border-color: var(--ct-gold) !important;
+    box-shadow: 0 0 0 3px rgba(196, 155, 55, 0.2) !important;
+    outline: none;
+}
+
+/* Table Row Hover Upgrade */
+.table-hover-premium tbody tr {
+    transition: background-color 0.2s ease;
+}
+.table-hover-premium tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.03);
+}
+
+/* Border Radius Tokens */
+.rounded-card {
+    border-radius: 16px !important;
+}
+.rounded-xl {
+    border-radius: 12px !important;
+}
