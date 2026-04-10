@@ -34,9 +34,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_participation'])
     $participo  = $_POST['participo'] ?? [];
     $estrellas  = $_POST['estrellas'] ?? [];
     $porcentaje = $_POST['porcentaje'] ?? [];
+    $ataques    = $_POST['ataques'] ?? [];
 
     $stmt = $db->prepare(
-        'UPDATE cwl_participaciones SET participo=?, estrellas=?, porcentaje=?
+        'UPDATE cwl_participaciones SET participo=?, estrellas=?, porcentaje=?, ataques=?
          WHERE temporada_id=? AND jugador_id=? AND dia=?'
     );
 
@@ -44,7 +45,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_participation'])
         $par = (int) $val;
         $est = ($estrellas[$jid] ?? '') !== '' ? (int) $estrellas[$jid] : null;
         $pct = ($porcentaje[$jid] ?? '') !== '' ? (float) $porcentaje[$jid] : null;
-        $stmt->execute([$par, $est, $pct, $id, (int) $jid, 1]);
+        $atq = ($ataques[$jid] ?? '') !== '' ? (int) $ataques[$jid] : null;
+        $stmt->execute([$par, $est, $pct, $atq, $id, (int) $jid, 1]);
     }
 
     logActivity('editar', 'cwl_participaciones', $id, 'Participaciones actualizadas');
@@ -80,11 +82,12 @@ foreach ($rawParticipaciones as $row) {
     if ($row['dia'] != 1) continue; // Ignoramos otros días si existen
     $jid = $row['jugador_id'];
     $jugadores[$jid] = [
-        'nombre'   => $row['usuario'],
-        'rol_clan' => $row['rol_clan'],
+        'nombre'     => $row['usuario'],
+        'rol_clan'   => $row['rol_clan'],
         'estrellas'  => $row['estrellas'],
         'porcentaje' => $row['porcentaje'],
-        'participo'  => $row['participo']
+        'participo'  => $row['participo'],
+        'ataques'    => $row['ataques'] ?? null,
     ];
 }
 
@@ -268,7 +271,8 @@ function toggleAllPlayers(checked) {
                         <th style="min-width: 200px;">Jugador</th>
                         <th class="text-center">Participó</th>
                         <th class="text-center">Estrellas Totales</th>
-                        <th class="text-center">Porcentaje Total</th>
+                        <th class="text-center">% Destrucción</th>
+                        <th class="text-center"># Ataques</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -305,9 +309,17 @@ function toggleAllPlayers(checked) {
                         <td class="text-center">
                             <div class="input-group input-group-sm mx-auto" style="width: 110px;">
                                 <input type="number" name="porcentaje[<?= $jid ?>]" 
-                                       class="form-control text-center" min="0" step="0.01" placeholder="Destrucción"
+                                       class="form-control text-center" min="0" step="0.01" placeholder="0"
                                        value="<?= $jd['porcentaje'] ?? '' ?>">
                                 <span class="input-group-text px-1 text-muted">%</span>
+                            </div>
+                        </td>
+                        <td class="text-center">
+                            <div class="input-group input-group-sm mx-auto" style="width: 90px;">
+                                <span class="input-group-text p-1 text-muted"><i class="bi bi-sword"></i></span>
+                                <input type="number" name="ataques[<?= $jid ?>]" 
+                                       class="form-control text-center" min="0" max="7" placeholder="0-7"
+                                       value="<?= $jd['ataques'] ?? '' ?>">
                             </div>
                         </td>
                     </tr>
