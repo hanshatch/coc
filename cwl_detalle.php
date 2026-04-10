@@ -18,11 +18,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_players'])) {
     verifyCsrf();
     $playerIds = $_POST['jugador_ids'] ?? [];
     if (!empty($playerIds)) {
-        $stmt = $db->prepare('INSERT IGNORE INTO cwl_participaciones (temporada_id, jugador_id, dia) VALUES (?, ?, ?)');
+        $stmt = $db->prepare('INSERT IGNORE INTO cwl_participaciones (temporada_id, jugador_id, dia) VALUES (?, ?, 1)');
         foreach ($playerIds as $pid) {
-            for ($dia = 1; $dia <= 7; $dia++) {
-                $stmt->execute([$id, (int) $pid, $dia]);
-            }
+            $stmt->execute([$id, (int) $pid]);
         }
         logActivity('crear', 'cwl_participaciones', $id, 'Agregados ' . count($playerIds) . ' jugadores');
         setFlash('success', count($playerIds) . ' jugador(es) agregado(s) al roster.');
@@ -42,13 +40,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_participation'])
          WHERE temporada_id=? AND jugador_id=? AND dia=?'
     );
 
-    foreach ($participo as $jid => $dias) {
-        for ($dia = 1; $dia <= 7; $dia++) {
-            $part = isset($dias[$dia]) ? 1 : 0;
-            $est  = ($estrellas[$jid][$dia] ?? '') !== '' ? (int) $estrellas[$jid][$dia] : null;
-            $pct  = ($porcentaje[$jid][$dia] ?? '') !== '' ? (float) $porcentaje[$jid][$dia] : null;
-            $stmt->execute([$part, $est, $pct, $id, (int) $jid, $dia]);
-        }
+    foreach ($participo as $jid => $val) {
+        $par = (int) $val;
+        $est = ($estrellas[$jid] ?? '') !== '' ? (int) $estrellas[$jid] : null;
+        $pct = ($porcentaje[$jid] ?? '') !== '' ? (float) $porcentaje[$jid] : null;
+        $stmt->execute([$par, $est, $pct, $id, (int) $jid, 1]);
     }
 
     logActivity('editar', 'cwl_participaciones', $id, 'Participaciones actualizadas');
@@ -78,18 +74,18 @@ $rawParticipaciones = $db->prepare(
 $rawParticipaciones->execute([$id]);
 $rawParticipaciones = $rawParticipaciones->fetchAll();
 
-// Agrupar por jugador
+// Agrupar por jugador (solo tomamos el primer registro como Total)
 $jugadores = [];
 foreach ($rawParticipaciones as $row) {
+    if ($row['dia'] != 1) continue; // Ignoramos otros días si existen
     $jid = $row['jugador_id'];
-    if (!isset($jugadores[$jid])) {
-        $jugadores[$jid] = [
-            'nombre'   => $row['usuario'],
-            'rol_clan' => $row['rol_clan'],
-            'dias'     => []
-        ];
-    }
-    $jugadores[$jid]['dias'][$row['dia']] = $row;
+    $jugadores[$jid] = [
+        'nombre'   => $row['usuario'],
+        'rol_clan' => $row['rol_clan'],
+        'estrellas'  => $row['estrellas'],
+        'porcentaje' => $row['porcentaje'],
+        'participo'  => $row['participo']
+    ];
 }
 
 // Jugadores disponibles
@@ -249,10 +245,10 @@ function toggleAllPlayers(checked) {
             <table class="table table-hover mb-0" style="font-size:.85rem">
                 <thead>
                     <tr>
-                        <th style="min-width: 150px;">Jugador</th>
-                        <?php for ($dia = 1; $dia <= 7; $dia++): ?>
-                            <th class="text-center">Día <?= $dia ?></th>
-                        <?php endfor; ?>
+                        <th style="min-width: 200px;">Jugador</th>
+                        <th class="text-center">Participó</th>
+                        <th class="text-center">Estrellas Totales</th>
+                        <th class="text-center">Porcentaje Total</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -274,28 +270,26 @@ function toggleAllPlayers(checked) {
                                 </a>
                             </div>
                         </td>
-                        <?php for ($dia = 1; $dia <= 7; $dia++):
-                            $d = $jd['dias'][$dia] ?? null;
-                        ?>
-                        <td class="text-center p-1" style="min-width: 90px;">
-                            <div class="d-flex flex-column align-items-center gap-1">
-                                <input type="checkbox" name="participo[<?= $jid ?>][<?= $dia ?>]" value="1"
-                                       class="form-check-input m-0" <?= ($d && $d['participo']) ? 'checked' : '' ?>>
-                                <select name="estrellas[<?= $jid ?>][<?= $dia ?>]" class="form-select form-select-sm p-1 text-center" style="width: 80px; font-size: 0.75rem;">
-                                    <option value="">—</option>
-                                    <?php for ($s = 0; $s <= 3; $s++): ?>
-                                        <option value="<?= $s ?>" <?= ($d && $d['estrellas'] !== null && (int)$d['estrellas'] === $s) ? 'selected' : '' ?>><?= $s ?> ⭐</option>
-                                    <?php endfor; ?>
-                                </select>
-                                <div class="input-group input-group-sm" style="width: 80px;">
-                                    <input type="number" name="porcentaje[<?= $jid ?>][<?= $dia ?>]" 
-                                           class="form-control p-1 text-center" min="0" max="100" step="0.01" placeholder="0"
-                                           value="<?= $d['porcentaje'] ?? '' ?>">
-                                    <span class="input-group-text px-1 text-muted" style="font-size: 0.6rem">%</span>
-                                </div>
+                        <td class="text-center">
+                            <input type="checkbox" name="participo[<?= $jid ?>]" value="1"
+                                   class="form-check-input" <?= ($jd['participo']) ? 'checked' : '' ?>>
+                        </td>
+                        <td class="text-center">
+                            <div class="input-group input-group-sm mx-auto" style="width: 100px;">
+                                <span class="input-group-text p-1 text-gold"><i class="bi bi-star-fill small"></i></span>
+                                <input type="number" name="estrellas[<?= $jid ?>]" 
+                                       class="form-control text-center" min="0" max="21" placeholder="0-21"
+                                       value="<?= $jd['estrellas'] ?? '' ?>">
                             </div>
                         </td>
-                        <?php endfor; ?>
+                        <td class="text-center">
+                            <div class="input-group input-group-sm mx-auto" style="width: 110px;">
+                                <input type="number" name="porcentaje[<?= $jid ?>]" 
+                                       class="form-control text-center" min="0" step="0.01" placeholder="Destrucción"
+                                       value="<?= $jd['porcentaje'] ?? '' ?>">
+                                <span class="input-group-text px-1 text-muted">%</span>
+                            </div>
+                        </td>
                     </tr>
                     <?php endforeach; ?>
                 </tbody>
