@@ -50,14 +50,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_participation'])
         );
     } catch (\PDOException $e) { /* columna aún no existe */ }
 
-    foreach ($participo as $jid => $val) {
-        $par = (int) $val;
+    // Iteramos sobre todos los jugadores usando estrellas como referencia (los checkboxes no se envían si están desmarcados)
+    $todosJids = array_unique(array_merge(array_keys($estrellas), array_keys($porcentaje), array_keys($ataques)));
+
+    foreach ($todosJids as $jid) {
+        $jid = (int) $jid;
+        $par = isset($participo[$jid]) ? 1 : 0;
         $est = ($estrellas[$jid] ?? '') !== '' ? (int) $estrellas[$jid] : null;
         $pct = ($porcentaje[$jid] ?? '') !== '' ? (float) $porcentaje[$jid] : null;
         $atq = ($ataques[$jid] ?? '') !== '' ? (int) $ataques[$jid] : null;
-        $stmt->execute([$par, $est, $pct, $id, (int) $jid, 1]);
+        $stmt->execute([$par, $est, $pct, $id, $jid, 1]);
         if ($stmtAtq) {
-            $stmtAtq->execute([$atq, $id, (int) $jid, 1]);
+            $stmtAtq->execute([$atq, $id, $jid, 1]);
         }
     }
 
