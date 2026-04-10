@@ -37,16 +37,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_participation'])
     $ataques    = $_POST['ataques'] ?? [];
 
     $stmt = $db->prepare(
-        'UPDATE cwl_participaciones SET participo=?, estrellas=?, porcentaje=?, ataques=?
+        'UPDATE cwl_participaciones SET participo=?, estrellas=?, porcentaje=?
          WHERE temporada_id=? AND jugador_id=? AND dia=?'
     );
+
+    // Intentar actualizar ataques por separado (requiere columna en BD)
+    $stmtAtq = null;
+    try {
+        $stmtAtq = $db->prepare(
+            'UPDATE cwl_participaciones SET ataques=?
+             WHERE temporada_id=? AND jugador_id=? AND dia=?'
+        );
+    } catch (\PDOException $e) { /* columna aún no existe */ }
 
     foreach ($participo as $jid => $val) {
         $par = (int) $val;
         $est = ($estrellas[$jid] ?? '') !== '' ? (int) $estrellas[$jid] : null;
         $pct = ($porcentaje[$jid] ?? '') !== '' ? (float) $porcentaje[$jid] : null;
         $atq = ($ataques[$jid] ?? '') !== '' ? (int) $ataques[$jid] : null;
-        $stmt->execute([$par, $est, $pct, $atq, $id, (int) $jid, 1]);
+        $stmt->execute([$par, $est, $pct, $id, (int) $jid, 1]);
+        if ($stmtAtq) {
+            $stmtAtq->execute([$atq, $id, (int) $jid, 1]);
+        }
     }
 
     logActivity('editar', 'cwl_participaciones', $id, 'Participaciones actualizadas');
