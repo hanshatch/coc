@@ -56,9 +56,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_participation'])
     foreach ($todosJids as $jid) {
         $jid = (int) $jid;
         $par = isset($participo[$jid]) ? 1 : 0;
-        $est = ($estrellas[$jid] ?? '') !== '' ? (int) $estrellas[$jid] : null;
-        $pct = ($porcentaje[$jid] ?? '') !== '' ? (float) $porcentaje[$jid] : null;
-        $atq = ($ataques[$jid] ?? '') !== '' ? (int) $ataques[$jid] : null;
+        $est = ($estrellas[$jid] ?? '') !== '' ? min(12, max(0, (int) $estrellas[$jid])) : null;
+        $pct = ($porcentaje[$jid] ?? '') !== '' ? min(700, max(0, (int) $porcentaje[$jid])) : null;
+        $atq = ($ataques[$jid]  ?? '') !== '' ? min(7,   max(0, (int) $ataques[$jid]))  : null;
         $stmt->execute([$par, $est, $pct, $id, $jid, 1]);
         if ($stmtAtq) {
             $stmtAtq->execute([$atq, $id, $jid, 1]);
@@ -318,15 +318,15 @@ function toggleAllPlayers(checked) {
                             <div class="input-group input-group-sm mx-auto" style="width: 100px;">
                                 <span class="input-group-text p-1 text-gold"><i class="bi bi-star-fill small"></i></span>
                                 <input type="number" name="estrellas[<?= $jid ?>]" 
-                                       class="form-control text-center" min="0" max="21" placeholder="0-21"
+                                       class="form-control text-center cwl-estrellas" min="0" max="12" placeholder="0-12"
                                        value="<?= $jd['estrellas'] ?? '' ?>">
                             </div>
                         </td>
                         <td class="text-center">
                             <div class="input-group input-group-sm mx-auto" style="width: 110px;">
                                 <input type="number" name="porcentaje[<?= $jid ?>]" 
-                                       class="form-control text-center" min="0" step="0.01" placeholder="0"
-                                       value="<?= $jd['porcentaje'] ?? '' ?>">
+                                       class="form-control text-center cwl-porcentaje" min="0" max="700" step="1" placeholder="0"
+                                       value="<?= $jd['porcentaje'] !== null ? (int)$jd['porcentaje'] : '' ?>">
                                 <span class="input-group-text px-1 text-muted">%</span>
                             </div>
                         </td>
@@ -334,7 +334,7 @@ function toggleAllPlayers(checked) {
                             <div class="input-group input-group-sm mx-auto" style="width: 90px;">
                                 <span class="input-group-text p-1 text-muted"><i class="bi bi-sword"></i></span>
                                 <input type="number" name="ataques[<?= $jid ?>]" 
-                                       class="form-control text-center" min="0" max="7" placeholder="0-7"
+                                       class="form-control text-center cwl-ataques" min="0" max="7" placeholder="0-7"
                                        value="<?= $jd['ataques'] ?? '' ?>">
                             </div>
                         </td>
@@ -356,18 +356,59 @@ function filterRoster() {
     let visible = 0;
     rows.forEach(row => {
         const name = row.getAttribute('data-name') || '';
-        if (name.includes(q)) {
-            row.style.display = '';
-            visible++;
-        } else {
-            row.style.display = 'none';
-        }
+        if (name.includes(q)) { row.style.display = ''; visible++; }
+        else row.style.display = 'none';
     });
     const counter = document.getElementById('rosterVisible');
     if (counter) counter.textContent = visible;
 }
-
 document.getElementById('rosterFilter')?.addEventListener('input', filterRoster);
+
+// Validación al guardar
+document.querySelector('form[method="POST"]')?.addEventListener('submit', function(e) {
+    let errors = [];
+
+    document.querySelectorAll('.cwl-estrellas').forEach(inp => {
+        const v = inp.value;
+        if (v !== '' && (parseInt(v) < 0 || parseInt(v) > 12)) {
+            inp.classList.add('is-invalid');
+            errors.push('Estrellas debe estar entre 0 y 12.');
+        } else inp.classList.remove('is-invalid');
+    });
+
+    document.querySelectorAll('.cwl-porcentaje').forEach(inp => {
+        const v = inp.value;
+        if (v !== '' && (parseInt(v) < 0 || parseInt(v) > 700)) {
+            inp.classList.add('is-invalid');
+            errors.push('Destrucción debe estar entre 0 y 700.');
+        } else {
+            inp.classList.remove('is-invalid');
+            // Remover decimales al vuelo
+            if (v.includes('.')) inp.value = Math.round(parseFloat(v));
+        }
+    });
+
+    document.querySelectorAll('.cwl-ataques').forEach(inp => {
+        const v = inp.value;
+        if (v !== '' && (parseInt(v) < 0 || parseInt(v) > 7)) {
+            inp.classList.add('is-invalid');
+            errors.push('Ataques debe estar entre 0 y 7.');
+        } else inp.classList.remove('is-invalid');
+    });
+
+    if (errors.length > 0) {
+        e.preventDefault();
+        const unique = [...new Set(errors)];
+        alert('⚠️ Errores de validación:\n\n' + unique.join('\n'));
+    }
+});
+
+// Quitar decimales en tiempo real al escribir en porcentaje
+document.querySelectorAll('.cwl-porcentaje').forEach(inp => {
+    inp.addEventListener('blur', () => {
+        if (inp.value !== '') inp.value = Math.round(parseFloat(inp.value));
+    });
+});
 </script>
 
 <?php require __DIR__ . '/includes/footer.php'; ?>
