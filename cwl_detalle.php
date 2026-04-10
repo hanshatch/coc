@@ -188,8 +188,8 @@ require __DIR__ . '/includes/header.php';
                 </div>
 
                 <div class="text-end">
-                    <button type="submit" class="btn btn-primary px-4" style="background-color: var(--ct-gold); border-color: var(--ct-gold); color: #000; font-weight: bold;">
-                        <i class="bi bi-plus-lg"></i> AGREGAR AL ESCUADRÓN
+                    <button type="submit" class="btn btn-primary px-4 py-2 fw-bold text-dark border-0 shadow-glow transition-all" style="background-color: var(--ct-gold);">
+                        <i class="bi bi-plus-lg me-1"></i> AGREGAR AL ESCUADRÓN
                     </button>
                 </div>
             </form>
@@ -245,17 +245,53 @@ function toggleAllPlayers(checked) {
 </script>
 
 <style>
+/* Premium UI Tweaks (Theme Factory & Frontend Design) */
 .btn-outline-surface {
     color: var(--ct-text);
     border-color: var(--ct-border);
-    background: var(--ct-surface);
+    background: rgba(26, 29, 39, 0.4);
     font-size: 0.9rem;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.btn-outline-surface:hover {
+    border-color: var(--ct-gold);
+    transform: translateY(-1px);
 }
 .btn-check:checked + .btn-outline-surface {
-    background: rgba(245, 158, 11, 0.15);
+    background: rgba(196, 155, 55, 0.15); /* Gold tinted */
     border-color: var(--ct-gold);
     color: var(--ct-gold);
+    box-shadow: 0 0 12px rgba(196, 155, 55, 0.15);
 }
+
+/* Premium Inputs */
+.form-control, .form-select {
+    background: rgba(255, 255, 255, 0.03) !important;
+    border: 1px solid var(--ct-border) !important;
+    color: var(--ct-text) !important;
+    transition: all 0.2s ease;
+}
+.form-control:focus, .form-select:focus {
+    border-color: var(--ct-gold) !important;
+    box-shadow: 0 0 0 3px rgba(196, 155, 55, 0.2) !important;
+}
+
+/* Table Hover & Transitions */
+#rosterTable tbody tr {
+    transition: background-color 0.2s ease;
+}
+#rosterTable tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.03);
+}
+
+/* Micro-animations */
+.shadow-glow:hover {
+    box-shadow: 0 4px 20px rgba(196, 155, 55, 0.4);
+    transform: translateY(-2px);
+}
+.transition-all { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+
+/* Scrollbar */
 .player-selection-grid::-webkit-scrollbar { width: 6px; }
 .player-selection-grid::-webkit-scrollbar-thumb { background: var(--ct-border); border-radius: 10px; }
 .hover-opacity-100:hover { opacity: 1 !important; }
@@ -358,7 +394,9 @@ function toggleAllPlayers(checked) {
             </table>
         </div></div>
         <div class="mt-4 text-center">
-            <button type="submit" class="btn btn-primary btn-lg"><i class="bi bi-check-lg"></i> Guardar CWL</button>
+            <button type="submit" class="btn btn-primary btn-lg px-5 shadow-glow transition-all border-0 text-dark fw-bold" style="background-color: var(--ct-gold);">
+                <i class="bi bi-check-lg me-2"></i> MANTENER ROSTER ACTUALIZADO
+            </button>
         </div>
     </form>
 <?php endif; ?>
