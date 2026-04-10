@@ -182,7 +182,7 @@ a:hover { color: var(--ct-gold-hover); text-decoration: none; }
     --bs-table-bg: transparent;
     --bs-table-color: var(--ct-text);
     --bs-table-border-color: var(--ct-border);
-    --bs-table-hover-bg: rgba(245, 158, 11, 0.08);
+    --bs-table-hover-bg: rgba(255, 255, 255, 0.04);
     --bs-table-striped-bg: rgba(255, 255, 255, 0.01);
 }
 .border-primary { border-color: var(--ct-gold) !important; }
@@ -278,16 +278,21 @@ a:hover { color: var(--ct-gold-hover); text-decoration: none; }
     color: var(--ct-text);
 }
 
-/* Badges */
-.badge { font-family: var(--ct-font-title); font-weight: 600; letter-spacing: .3px; }
+/* Badges - Premium Styled (Tinted Backgrounds for max contrast) */
+.badge { 
+    font-family: var(--ct-font-title); 
+    font-weight: 600; 
+    letter-spacing: .3px; 
+    border: 1px solid transparent; 
+}
 
-.badge-gold     { background: var(--ct-gold); color: #0f1117; }
-.badge-green    { background: var(--ct-green); color: #0f1117; }
-.badge-red      { background: var(--ct-red); color: #fff; }
-.badge-blue     { background: var(--ct-blue); color: #0f1117; }
-.badge-purple   { background: var(--ct-purple); color: #0f1117; }
-.badge-cyan     { background: var(--ct-cyan); color: #0f1117; }
-.badge-muted    { background: var(--ct-border); color: var(--ct-text-muted); }
+.badge-gold     { background: rgba(196, 155, 55, 0.15); color: #e5b945; border-color: rgba(196, 155, 55, 0.3); }
+.badge-green    { background: rgba(80, 141, 105, 0.15); color: #72b28c; border-color: rgba(80, 141, 105, 0.3); }
+.badge-red      { background: rgba(163, 82, 82, 0.15); color: #d67a7a; border-color: rgba(163, 82, 82, 0.3); }
+.badge-blue     { background: rgba(93, 138, 168, 0.15); color: #8bb2cf; border-color: rgba(93, 138, 168, 0.3); }
+.badge-purple   { background: rgba(122, 110, 163, 0.15); color: #b3a5db; border-color: rgba(122, 110, 163, 0.3); }
+.badge-cyan     { background: rgba(108, 146, 156, 0.15); color: #9bc0ca; border-color: rgba(108, 146, 156, 0.3); }
+.badge-muted    { background: rgba(139, 148, 158, 0.15); color: #a1abb5; border-color: rgba(139, 148, 158, 0.3); }
 
 /* Pagination */
 .page-link {

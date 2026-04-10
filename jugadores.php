@@ -254,7 +254,7 @@ require __DIR__ . '/includes/header.php';
                 <tbody>
                     <?php foreach ($jugadores as $j): ?>
                         <tr>
-                            <td><span style="color:var(--ct-cyan);font-weight:600"><?= clean($j['usuario']) ?></span></td>
+                            <td><span class="text-white fw-bold"><?= clean($j['usuario']) ?></span></td>
                             <td><span class="badge <?= $rolBadge[$j['rol_clan']] ?? 'badge-muted' ?>"><?= ucfirst($j['rol_clan']) ?></span></td>
                             <td><?= $j['fecha_ingreso'] ? date('d/m/Y', strtotime($j['fecha_ingreso'])) : '—' ?></td>
                             <td>
