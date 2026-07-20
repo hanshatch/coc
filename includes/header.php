@@ -30,7 +30,7 @@ $currentName = str_replace('.php', '', $currentPage);
           integrity="sha384-XGjxtQfXaH2tnPFa9x+ruJTuLE3Aa6LhHSWRr1XeTyhezb4abCG4ccI5AkVDxqC+"
           crossorigin="anonymous">
     <!-- Custom Theme -->
-    <link href="assets/style.css?v=4.0" rel="stylesheet">
+    <link href="assets/style.css?v=5.0" rel="stylesheet">
 </head>
 <body>
 

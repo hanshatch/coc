@@ -21,6 +21,18 @@
     --ct-cyan:        #6c929c;
     --ct-text:        #d1d5db;
     --ct-text-muted:  #8b949e;
+
+    /* Variantes claras para TEXTO. Los tonos de arriba sirven como
+       fondo o borde, pero sobre el tema oscuro no alcanzan contraste
+       suficiente para leerse: --ct-red da 2.8:1 y --ct-green 3.9:1.
+       Estas versiones aclaradas pasan WCAG AA en toda la interfaz. */
+    --ct-green-text:  #72b28c;
+    --ct-red-text:    #d67a7a;
+    --ct-gold-text:   #e5b945;
+    --ct-blue-text:   #8bb2cf;
+    --ct-purple-text: #b3a5db;
+    --ct-cyan-text:   #9bc0ca;
+    --ct-gris-text:   #a1abb5;
     --ct-sidebar-w:   260px;
     --ct-font-title:  'Rajdhani', sans-serif;
     --ct-font-body:   'Outfit', sans-serif;
@@ -286,13 +298,31 @@ a:hover { color: var(--ct-gold-hover); text-decoration: none; }
     border: 1px solid transparent; 
 }
 
-.badge-gold     { background: rgba(196, 155, 55, 0.15); color: #e5b945; border-color: rgba(196, 155, 55, 0.3); }
-.badge-green    { background: rgba(80, 141, 105, 0.15); color: #72b28c; border-color: rgba(80, 141, 105, 0.3); }
-.badge-red      { background: rgba(163, 82, 82, 0.15); color: #d67a7a; border-color: rgba(163, 82, 82, 0.3); }
-.badge-blue     { background: rgba(93, 138, 168, 0.15); color: #8bb2cf; border-color: rgba(93, 138, 168, 0.3); }
-.badge-purple   { background: rgba(122, 110, 163, 0.15); color: #b3a5db; border-color: rgba(122, 110, 163, 0.3); }
-.badge-cyan     { background: rgba(108, 146, 156, 0.15); color: #9bc0ca; border-color: rgba(108, 146, 156, 0.3); }
-.badge-muted    { background: rgba(139, 148, 158, 0.15); color: #a1abb5; border-color: rgba(139, 148, 158, 0.3); }
+.badge-gold     { background: rgba(196, 155, 55, 0.15); color: var(--ct-gold-text);   border-color: rgba(196, 155, 55, 0.3); }
+.badge-green    { background: rgba(80, 141, 105, 0.15); color: var(--ct-green-text);  border-color: rgba(80, 141, 105, 0.3); }
+.badge-red      { background: rgba(163, 82, 82, 0.15);  color: var(--ct-red-text);    border-color: rgba(163, 82, 82, 0.3); }
+.badge-blue     { background: rgba(93, 138, 168, 0.15); color: var(--ct-blue-text);   border-color: rgba(93, 138, 168, 0.3); }
+.badge-purple   { background: rgba(122, 110, 163, 0.15); color: var(--ct-purple-text); border-color: rgba(122, 110, 163, 0.3); }
+.badge-cyan     { background: rgba(108, 146, 156, 0.15); color: var(--ct-cyan-text);  border-color: rgba(108, 146, 156, 0.3); }
+.badge-muted    { background: rgba(139, 148, 158, 0.15); color: var(--ct-gris-text);  border-color: rgba(139, 148, 158, 0.3); }
+
+/* ── Colores semánticos de texto ──────────────────────────────
+   Bootstrap trae verdes y rojos calculados para fondo claro: sobre
+   este tema oscuro dan 3.3:1, y al pasar el mouse el fondo se aclara
+   y bajan a menos todavía. Por eso el texto de colores se lavaba
+   hasta parecer gris justo cuando lo estabas señalando.
+
+   Se reusan los tonos que ya usaban los badges, así un verde
+   significa lo mismo en toda la interfaz. Medidos sobre los tres
+   fondos del tema, ninguno baja de 4.7:1 (WCAG AA pide 4.5).
+
+   Además son bastante menos saturados que los de Bootstrap
+   (29% y 53% contra 69% y 70%), que es lo que los hace legibles
+   sin resultar estridentes sobre un fondo oscuro. */
+.text-success { color: var(--ct-green-text) !important; }
+.text-danger  { color: var(--ct-red-text)   !important; }
+.text-warning { color: var(--ct-gold-text)  !important; }
+.text-info    { color: var(--ct-blue-text)  !important; }
 
 /* Pagination */
 .page-link {
@@ -329,6 +359,29 @@ a:hover { color: var(--ct-gold-hover); text-decoration: none; }
     font-size: .9rem;
     border: none;
 }
+
+/* Bootstrap pinta las alertas con fondos claros pensados para tema
+   claro: sobre este fondo oscuro aparecían como recuadros rosa y verde
+   pálido, que era la parte más estridente de la interfaz. Se les aplica
+   el mismo lenguaje que a los badges: fondo teñido, texto en la variante
+   clara del color y una barra lateral que da la señal sin gritar. */
+.alert-success,
+.alert-danger,
+.alert-warning,
+.alert-info {
+    border-left: 3px solid;
+}
+.alert-success { background: rgba(80, 141, 105, 0.12); color: var(--ct-green-text); border-left-color: var(--ct-green-text); }
+.alert-danger  { background: rgba(163, 82, 82, 0.12);  color: var(--ct-red-text);   border-left-color: var(--ct-red-text); }
+.alert-warning { background: rgba(196, 155, 55, 0.12); color: var(--ct-gold-text);  border-left-color: var(--ct-gold-text); }
+.alert-info    { background: rgba(93, 138, 168, 0.12); color: var(--ct-blue-text);  border-left-color: var(--ct-blue-text); }
+
+/* La X de cerrar es un SVG oscuro: sobre fondo oscuro desaparecía. */
+.alert .btn-close {
+    filter: invert(1) grayscale(1) brightness(1.6);
+    opacity: .5;
+}
+.alert .btn-close:hover { opacity: .9; }
 
 /* Dropdown */
 .dropdown-menu {
