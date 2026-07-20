@@ -10,7 +10,7 @@ RewriteCond %{REQUEST_FILENAME}.php -f
 RewriteRule ^(.*)$ $1.php [L]
 
 # ── Bloquear directorios y archivos sensibles ────────────────
-RewriteRule ^(config|includes|sql)/ - [F,L]
+RewriteRule ^(config|includes|sql|cron)/ - [F,L]
 
 <FilesMatch "\.(sql|md|json|lock|log|example\.php)$">
     Require all denied
