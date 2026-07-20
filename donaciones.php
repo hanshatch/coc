@@ -123,7 +123,7 @@ require __DIR__ . '/includes/header.php';
                 <tr>
                     <td><?= date('d/m', strtotime($p['fecha_inicio'])) ?> — <?= date('d/m/Y', strtotime($p['fecha_fin'])) ?></td>
                     <td><span class="badge <?= $p['tipo'] === 'semanal' ? 'badge-blue' : 'badge-purple' ?>"><?= ucfirst($p['tipo']) ?></span></td>
-                    <td class="text-center"><strong><?= number_format($p['total_donadas']) ?></strong></td>
+                    <td class="text-center"><strong><?= number_format((int) $p['total_donadas']) ?></strong></td>
                     <td class="text-center"><?= (int) $p['participantes'] ?></td>
                     <td class="text-end">
                         <a href="donaciones_detalle?id=<?= $p['id'] ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a>

@@ -10,6 +10,9 @@ require_once __DIR__ . '/../config/database.php';
 // Cierra la sesión tras este tiempo sin actividad.
 define('SESSION_IDLE_TIMEOUT', 7200); // 2 horas
 
+// Longitud mínima de contraseña al crear o cambiar un usuario.
+define('PASSWORD_MIN_LENGTH', 12);
+
 // ── Sesión ────────────────────────────────────────────────────
 
 /**

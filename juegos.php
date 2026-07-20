@@ -127,8 +127,8 @@ require __DIR__ . '/includes/header.php';
                 ?>
                 <tr>
                     <td><?= date('d/m', strtotime($j['fecha_inicio'])) ?> — <?= date('d/m/Y', strtotime($j['fecha_fin'])) ?></td>
-                    <td><?= number_format($j['meta_puntos']) ?></td>
-                    <td><strong><?= number_format($j['puntos_sum']) ?></strong></td>
+                    <td><?= number_format((int) $j['meta_puntos']) ?></td>
+                    <td><strong><?= number_format((int) $j['puntos_sum']) ?></strong></td>
                     <td style="min-width:140px">
                         <div class="progress" style="height:20px">
                             <div class="progress-bar" style="width:<?= $pct ?>%"><?= $pct ?>%</div>

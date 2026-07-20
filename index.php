@@ -162,7 +162,7 @@ require __DIR__ . '/includes/header.php';
                                             <small class="text-muted fw-normal opacity-50 ms-1" style="font-size: 0.65rem;">(<?= strtoupper($d['rol_clan']) ?>)</small>
                                         </div>
                                     </td>
-                                    <td class="text-end pe-3 py-2 text-gold font-monospace"><?= number_format($d['tropas_donadas']) ?></td>
+                                    <td class="text-end pe-3 py-2 text-gold font-monospace"><?= number_format((int) $d['tropas_donadas']) ?></td>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>

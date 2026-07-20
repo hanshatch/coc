@@ -33,6 +33,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $id            = (int) ($_POST['id'] ?? 0);
     $usuario       = strtoupper(trim($_POST['usuario'] ?? ''));
     $rol_clan      = $_POST['rol_clan'] ?? 'miembro';
+    if (!in_array($rol_clan, ['lider', 'colider', 'veterano', 'miembro'], true)) {
+        $rol_clan = 'miembro';
+    }
     $fecha_ingreso = $_POST['fecha_ingreso'] ?: null;
     $activo        = isset($_POST['activo']) ? 1 : 0;
     $notas         = trim($_POST['notas'] ?? '') ?: null;

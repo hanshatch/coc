@@ -29,9 +29,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = $_POST['password'] ?? '';
     $activo   = isset($_POST['activo']) ? 1 : 0;
 
+    // El rol decide privilegios: nunca confiar en el valor enviado.
+    if (!in_array($rol, ['admin', 'editor'], true)) {
+        $rol = 'editor';
+    }
+
     if ($username === '' || $nombre === '') {
         setFlash('error', 'Usuario y nombre son obligatorios.');
         header('Location: usuarios?action=' . ($id ? 'edit&id=' . $id : 'create')); exit;
+    }
+
+    if ($password !== '' && mb_strlen($password) < PASSWORD_MIN_LENGTH) {
+        setFlash('error', 'La contraseña debe tener al menos ' . PASSWORD_MIN_LENGTH . ' caracteres.');
+        header('Location: usuarios?action=' . ($id ? 'edit&id=' . $id : 'create')); exit;
+    }
+
+    // Un admin no debe poder quitarse a sí mismo el rol o desactivarse:
+    // dejaría el sistema sin administrador accesible.
+    if ($id === currentUser()['id'] && ($rol !== 'admin' || $activo === 0)) {
+        setFlash('error', 'No puedes quitarte el rol de administrador ni desactivar tu propia cuenta.');
+        header('Location: usuarios?action=edit&id=' . $id); exit;
     }
 
     if ($id > 0) {
@@ -79,7 +96,13 @@ if ($action === 'create' || $action === 'edit') {
             <div class="row g-3">
                 <div class="col-md-6"><label class="form-label">Usuario (login)</label><input type="text" name="username" class="form-control" value="<?= clean($u['username'] ?? '') ?>" required></div>
                 <div class="col-md-6"><label class="form-label">Nombre completo</label><input type="text" name="nombre" class="form-control" value="<?= clean($u['nombre'] ?? '') ?>" required></div>
-                <div class="col-md-6"><label class="form-label">Contraseña</label><input type="password" name="password" class="form-control" <?= $u ? '' : 'required' ?> placeholder="<?= $u ? 'Dejar vacío para no cambiar' : 'Ingresa contraseña' ?>"></div>
+                <div class="col-md-6">
+                    <label class="form-label">Contraseña</label>
+                    <input type="password" name="password" class="form-control" minlength="<?= PASSWORD_MIN_LENGTH ?>"
+                           <?= $u ? '' : 'required' ?>
+                           placeholder="<?= $u ? 'Dejar vacío para no cambiar' : 'Ingresa contraseña' ?>">
+                    <div class="form-text">Mínimo <?= PASSWORD_MIN_LENGTH ?> caracteres.</div>
+                </div>
                 <div class="col-md-3">
                     <label class="form-label">Rol</label>
                     <select name="rol" class="form-select">

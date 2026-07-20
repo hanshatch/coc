@@ -132,7 +132,7 @@ require __DIR__ . '/includes/header.php';
                 <?php foreach ($semanas as $s): ?>
                 <tr>
                     <td><?= date('d/m', strtotime($s['fecha_inicio'])) ?> — <?= date('d/m/Y', strtotime($s['fecha_fin'])) ?></td>
-                    <td class="text-center"><strong><?= number_format($s['oro_sum']) ?></strong></td>
+                    <td class="text-center"><strong><?= number_format((int) $s['oro_sum']) ?></strong></td>
                     <td class="text-center"><?= (int) $s['ataques_totales'] ?></td>
                     <td class="text-center"><?= (int) $s['distritos_destruidos'] ?></td>
                     <td class="text-center"><?= (int) $s['participantes'] ?></td>

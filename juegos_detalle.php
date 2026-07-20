@@ -87,7 +87,7 @@ require __DIR__ . '/includes/header.php';
 </div>
 
 <div class="row g-3 mb-4">
-    <div class="col-md-3"><div class="stat-card"><div class="stat-icon">🎯</div><div class="stat-value"><?= number_format($totalPuntos) ?></div><div class="stat-label">de <?= number_format($juego['meta_puntos']) ?> puntos</div></div></div>
+    <div class="col-md-3"><div class="stat-card"><div class="stat-icon">🎯</div><div class="stat-value"><?= number_format($totalPuntos) ?></div><div class="stat-label">de <?= number_format((int) $juego['meta_puntos']) ?> puntos</div></div></div>
     <div class="col-md-3"><div class="stat-card"><div class="stat-icon">👥</div><div class="stat-value"><?= count($participaciones) ?></div><div class="stat-label">Participantes</div></div></div>
     <div class="col-md-3"><div class="stat-card"><div class="stat-icon">🏅</div><div class="stat-value"><?= $maxAlcanzados ?></div><div class="stat-label">Alcanzaron Máximo</div></div></div>
     <div class="col-md-3"><div class="stat-card"><div class="stat-icon"><?= $pctAvance >= 100 ? '✅' : '📊' ?></div><div class="stat-value"><?= $pctAvance ?>%</div><div class="stat-label">Avance</div></div></div>
@@ -95,7 +95,7 @@ require __DIR__ . '/includes/header.php';
 
 <!-- Barra de progreso -->
 <div class="progress mb-4" style="height:28px">
-    <div class="progress-bar" style="width:<?= $pctAvance ?>%"><?= number_format($totalPuntos) ?> / <?= number_format($juego['meta_puntos']) ?></div>
+    <div class="progress-bar" style="width:<?= $pctAvance ?>%"><?= number_format($totalPuntos) ?> / <?= number_format((int) $juego['meta_puntos']) ?></div>
 </div>
 
 <?php if (!empty($jugadoresDisp)): ?>
