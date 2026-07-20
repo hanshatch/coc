@@ -24,6 +24,11 @@ $db = getDB();
 // bajos: por eso pesa menos que las arenas de evento.
 const MINIMO_DONACIONES = 100;
 
+// A partir de cuántas estrellas de guerra de por vida consideramos que
+// alguien tiene historia en el juego. No prueba que siga activo, pero
+// distingue al veterano que faltó una semana del que nunca ha aportado.
+const VETERANO_ESTRELLAS = 500;
+
 $cwlTemp = $db->query(
     'SELECT t.id, t.mes FROM cwl_temporadas t
        JOIN cwl_participaciones p ON p.temporada_id = t.id
@@ -82,25 +87,37 @@ foreach ($jugadores as &$j) {
 
     $dono = (int) ($j['donaciones'] ?? 0) >= MINIMO_DONACIONES;
 
+    // Historia acumulada de por vida. Sirve para no confundir a quien
+    // nunca ha aportado con el veterano que tuvo una semana tranquila.
+    $historia = (int) ($j['acum_guerra_estrellas'] ?? 0);
+
     $j['arenas']      = $arenas;
     $j['aporta']      = $aporta;
     $j['enRosterCwl'] = $enRosterCwl;
     $j['dono']        = $dono;
+    $j['historia']    = $historia;
+    $j['veterano']    = $historia >= VETERANO_ESTRELLAS;
     $j['cwl_prom']    = (int) ($j['cwl_ataques'] ?? 0) > 0
         ? round((int) $j['cwl_estrellas'] / (int) $j['cwl_ataques'], 2)
         : null;
 
-    // No aporta nada: cero en todas las arenas que pudo jugar y encima
-    // sin donar. Es el caso que justifica sacar a alguien.
-    $j['nulo'] = $arenas > 0 && $aporta === 0 && !$dono;
+    // Sin participación en el periodo medido. Ojo: es UN periodo, no un
+    // patrón. Las donaciones quedan fuera del criterio porque se
+    // reinician cada mes y ahora mismo solo 3 de 29 superarían cualquier
+    // umbral razonable: incluirlas marcaría a casi todos.
+    $j['sinParticipar'] = $arenas > 0 && $aporta === 0;
 
     // Juega todo: participó en cada arena que tuvo disponible.
     $j['completo'] = $arenas >= 2 && $aporta === $arenas;
 }
 unset($j);
 
-$nulos = array_filter($jugadores, fn($j) => $j['nulo']);
-usort($nulos, fn($a, $b) => (int) ($a['donaciones'] ?? 0) <=> (int) ($b['donaciones'] ?? 0));
+// Se ordenan por historia ascendente: arriba quedan los que ni
+// participaron ahora ni han aportado nunca, que son los candidatos
+// reales. Los veteranos con historial caen al fondo de la lista.
+$nulos = array_filter($jugadores, fn($j) => $j['sinParticipar']);
+usort($nulos, fn($a, $b) => [$a['historia'], (int) ($a['donaciones'] ?? 0)]
+                        <=> [$b['historia'], (int) ($b['donaciones'] ?? 0)]);
 
 $completos = array_filter($jugadores, fn($j) => $j['completo']);
 usort($completos, fn($a, $b) => ($b['cwl_prom'] ?? 0) <=> ($a['cwl_prom'] ?? 0));
@@ -127,37 +144,55 @@ require __DIR__ . '/includes/header.php';
 
 <div class="row g-3 mb-4">
     <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon">👥</div><div class="stat-value"><?= count($jugadores) ?></div><div class="stat-label">En el clan</div></div></div>
-    <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon">🚫</div><div class="stat-value text-danger"><?= count($nulos) ?></div><div class="stat-label">No aportan nada</div></div></div>
+    <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon">🚫</div><div class="stat-value text-danger"><?= count($nulos) ?></div><div class="stat-label">Sin participar</div></div></div>
     <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon">🏅</div><div class="stat-value text-success"><?= count($completos) ?></div><div class="stat-label">Juegan todo</div></div></div>
     <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon">◐</div><div class="stat-value"><?= count($parciales) ?></div><div class="stat-label">Participan a medias</div></div></div>
 </div>
 
 <!-- ── Para sacar ─────────────────────────────────────────────── -->
 <div class="card mb-4" style="border-left:3px solid var(--ct-red-text)">
-    <div class="card-header"><i class="bi bi-person-x-fill text-danger"></i> No aportan nada — candidatos a expulsión</div>
+    <div class="card-header"><i class="bi bi-person-x-fill text-danger"></i> Sin participación en el último periodo</div>
     <?php if (!$nulos): ?>
-        <div class="card-body text-muted">Nadie está en cero absoluto. Revisa "Participan a medias" más abajo.</div>
+        <div class="card-body text-muted">Todos participaron en algún frente.</div>
     <?php else: ?>
+    <div class="alert alert-warning m-3 mb-0">
+        <i class="bi bi-exclamation-triangle-fill"></i>
+        <strong>Esto es un periodo, no un patrón.</strong>
+        Solo hay un fin de semana de capital y una CWL medidos, así que faltar una vez basta para
+        aparecer aquí. Los de arriba, sin historia acumulada, son los candidatos reales; los de abajo
+        son veteranos que probablemente solo tuvieron una semana tranquila.
+        Conforme se acumulen semanas esta lista se vuelve confiable por sí sola.
+    </div>
     <div class="table-responsive"><table class="table table-hover mb-0">
         <thead><tr>
-            <th>Jugador</th><th>Rol</th><th class="text-center">TH</th>
-            <th class="text-center">Capital</th><th class="text-center">CWL</th><th class="text-center">Donaciones</th>
+            <th>Jugador</th><th class="text-center">TH</th>
+            <th class="text-center">Capital</th><th class="text-center">CWL</th>
+            <th class="text-center">Donaciones</th><th class="text-center">Historia en el juego</th>
         </tr></thead>
         <tbody>
         <?php foreach ($nulos as $j): ?>
             <tr>
-                <td><strong class="text-white"><?= clean($j['nombre_juego']) ?></strong></td>
-                <td><span class="badge <?= $rolBadge[$j['rol_clan']] ?? 'badge-muted' ?>"><?= ucfirst($j['rol_clan']) ?></span></td>
+                <td>
+                    <strong class="text-white"><?= clean($j['nombre_juego']) ?></strong>
+                    <span class="badge <?= $rolBadge[$j['rol_clan']] ?? 'badge-muted' ?> ms-1"><?= ucfirst($j['rol_clan']) ?></span>
+                </td>
                 <td class="text-center"><?= $j['th_nivel'] ? 'TH' . (int) $j['th_nivel'] : '—' ?></td>
                 <td class="text-center"><span class="badge badge-red">No jugó</span></td>
                 <td class="text-center">
                     <?php if ($j['enRosterCwl']): ?>
-                        <span class="badge badge-red">0 de 7 ataques</span>
+                        <span class="badge badge-red">0 de 7</span>
                     <?php else: ?>
                         <span class="text-muted">No entró</span>
                     <?php endif; ?>
                 </td>
-                <td class="text-center text-danger"><?= number_format((int) ($j['donaciones'] ?? 0)) ?></td>
+                <td class="text-center <?= $j['dono'] ? 'text-success' : 'text-muted' ?>"><?= number_format((int) ($j['donaciones'] ?? 0)) ?></td>
+                <td class="text-center">
+                    <?php if ($j['veterano']): ?>
+                        <span class="badge badge-blue" title="Estrellas de guerra de por vida"><?= number_format($j['historia']) ?> ⭐</span>
+                    <?php else: ?>
+                        <span class="text-muted"><?= number_format($j['historia']) ?> ⭐</span>
+                    <?php endif; ?>
+                </td>
             </tr>
         <?php endforeach; ?>
         </tbody>
@@ -249,7 +284,7 @@ require __DIR__ . '/includes/header.php';
     y la CWL de <?= $cwlTemp ? clean((string) $cwlTemp['mes']) : '—' ?>.
     El capital cuenta para todos porque está abierto a todo el clan; la CWL solo para quien entró al roster,
     ya que esa selección la haces tú y no sería justo cobrársela al jugador.
-    Se considera que donó a partir de <?= MINIMO_DONACIONES ?> tropas en la temporada, que se reinicia cada mes.
+    Las donaciones se muestran como contexto pero no deciden la clasificación: se reinician cada mes y hoy solo 3 de 29 jugadores superarían cualquier umbral razonable, así que incluirlas marcaría a casi todo el clan.
 </div>
 
 <?php endif; ?>
