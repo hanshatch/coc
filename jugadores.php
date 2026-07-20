@@ -50,7 +50,6 @@ require __DIR__ . '/includes/header.php';
 
 <div class="ct-page-header">
     <h1><i class="bi bi-people-fill"></i> Jugadores</h1>
-    <a href="sincronizar" class="btn btn-primary btn-sm"><i class="bi bi-arrow-repeat"></i> Sincronizar</a>
 </div>
 
 <div class="card mb-4"><div class="card-body py-2">
@@ -72,8 +71,7 @@ require __DIR__ . '/includes/header.php';
 <?php if (!$jugadores): ?>
     <div class="empty-state">
         <div class="empty-icon">🏰</div>
-        <p>Sin jugadores. Corre una sincronización para traerlos de la API.</p>
-        <a href="sincronizar" class="btn btn-primary btn-sm">Sincronizar ahora</a>
+        <p>Sin jugadores todavía. La captura automática los trae de la API cada noche.</p>
     </div>
 <?php else: ?>
 <div class="card"><div class="table-responsive">

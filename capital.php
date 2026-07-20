@@ -27,13 +27,12 @@ require __DIR__ . '/includes/header.php';
 
 <div class="ct-page-header">
     <h1><i class="bi bi-building-fill"></i> Capital de Clan</h1>
-    <a href="sincronizar" class="btn btn-primary btn-sm"><i class="bi bi-arrow-repeat"></i> Sincronizar</a>
 </div>
 
 <?php if (!$semanas): ?>
     <div class="empty-state">
         <div class="empty-icon">🏰</div>
-        <p>Sin fines de semana de asalto. Corre una sincronización para traerlos.</p>
+        <p>Sin fines de semana de asalto. La captura automática los trae cada noche.</p>
     </div>
 <?php else: ?>
 <div class="row g-3 mb-4">

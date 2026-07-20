@@ -32,14 +32,12 @@ require __DIR__ . '/includes/header.php';
 
 <div class="ct-page-header">
     <h1><i class="bi bi-lightning-fill"></i> Guerras</h1>
-    <a href="sincronizar" class="btn btn-primary btn-sm"><i class="bi bi-arrow-repeat"></i> Sincronizar</a>
 </div>
 
 <?php if (!$guerras): ?>
     <div class="empty-state">
         <div class="empty-icon">⚔️</div>
-        <p>Sin guerras registradas. Corre una sincronización para traer el historial de la API.</p>
-        <a href="sincronizar" class="btn btn-primary btn-sm">Sincronizar ahora</a>
+        <p>Sin guerras registradas. La captura automática trae el historial cada noche.</p>
     </div>
 <?php else:
     $t = max(1, (int) $stats['total']);

@@ -57,8 +57,7 @@ require __DIR__ . '/includes/header.php';
 <?php if (!$clan): ?>
     <div class="empty-state">
         <div class="empty-icon">🏰</div>
-        <p>Sin datos todavía. Corre una sincronización para traer el estado del clan.</p>
-        <a href="sincronizar" class="btn btn-primary btn-sm">Sincronizar ahora</a>
+        <p>Sin datos todavía. La captura automática corre cada noche a las 23:30.</p>
     </div>
 <?php else: ?>
 

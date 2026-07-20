@@ -125,7 +125,7 @@ $rolBadge = ['lider'=>'badge-gold','colider'=>'badge-purple','veterano'=>'badge-
 </div>
 
 <?php if (!$jugadores): ?>
-    <div class="empty-state"><div class="empty-icon">📊</div><p>Sin jugadores activos. Corre una sincronización.</p></div>
+    <div class="empty-state"><div class="empty-icon">📊</div><p>Sin jugadores activos todavía.</p></div>
 <?php else: ?>
 
 <div class="row g-3 mb-4">

@@ -28,7 +28,6 @@ require __DIR__ . '/includes/header.php';
 
 <div class="ct-page-header">
     <h1><i class="bi bi-trophy-fill"></i> Liga de guerras</h1>
-    <a href="sincronizar" class="btn btn-primary btn-sm"><i class="bi bi-arrow-repeat"></i> Sincronizar</a>
 </div>
 
 <?php if (!$temps): ?>
