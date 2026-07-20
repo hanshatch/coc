@@ -55,22 +55,33 @@ $jugadores = $stmt->fetchAll();
 
 /**
  * Marca las señales flojas de un jugador.
- * Solo se evalúa lo que hay: si no jugó la CWL porque no estaba en el
- * clan, no se le cuenta en contra.
  *
+ * No tener fila en capital o CWL significa que no participó, no que
+ * falte el dato: la API solo lista a quien atacó. Tratar esa ausencia
+ * como "sin información" escondería justo a los que hay que revisar.
+ *
+ * @param  bool $hayCwl     ¿Existe una temporada de CWL con datos?
+ * @param  bool $hayCapital ¿Existe un fin de semana con desglose?
  * @return list<string>
  */
-function alertas(array $j): array
+function alertas(array $j, bool $hayCwl, bool $hayCapital): array
 {
     $a = [];
 
-    if ($j['cwl_ataques'] !== null && (int) $j['cwl_ataques'] === 0) {
-        $a[] = 'No atacó en CWL';
-    } elseif ($j['cwl_ataques'] !== null && (int) $j['cwl_ataques'] < 4) {
-        $a[] = 'Pocos ataques en CWL';
+    if ($hayCwl) {
+        $ataques = (int) ($j['cwl_ataques'] ?? 0);
+        if ($j['cwl_ataques'] === null) {
+            $a[] = 'Fuera del roster de CWL';
+        } elseif ($ataques === 0) {
+            $a[] = 'No atacó en CWL';
+        } elseif ($ataques < 4) {
+            $a[] = 'Pocos ataques en CWL';
+        }
     }
 
-    if ($j['cap_ataques'] !== null && (int) $j['cap_ataques'] === 0) {
+    if ($hayCapital && $j['cap_ataques'] === null) {
+        $a[] = 'No participó en el capital';
+    } elseif ($hayCapital && (int) $j['cap_ataques'] === 0) {
         $a[] = 'No atacó en capital';
     }
 
@@ -83,8 +94,11 @@ function alertas(array $j): array
     return $a;
 }
 
+$hayCwl     = (bool) $cwlId;
+$hayCapital = (bool) $capId;
+
 foreach ($jugadores as &$j) {
-    $j['alertas'] = alertas($j);
+    $j['alertas']  = alertas($j, $hayCwl, $hayCapital);
     $j['cwl_prom'] = $j['cwl_ataques'] ? round((int) $j['cwl_estrellas'] / (int) $j['cwl_ataques'], 2) : null;
 }
 unset($j);
@@ -138,7 +152,7 @@ $rolBadge = ['lider'=>'badge-gold','colider'=>'badge-purple','veterano'=>'badge-
                 </td>
                 <td><span class="badge <?= $rolBadge[$j['rol_clan']] ?? 'badge-muted' ?>"><?= ucfirst($j['rol_clan']) ?></span></td>
                 <td class="text-center"><?= $j['cwl_ataques'] !== null ? (int) $j['cwl_ataques'] . '/7' : '—' ?></td>
-                <td class="text-center"><?= $j['cap_ataques'] !== null ? (int) $j['cap_ataques'] : '—' ?></td>
+                <td class="text-center"><?= $j['cap_ataques'] !== null ? (int) $j['cap_ataques'] : '<span class="text-danger">no jugó</span>' ?></td>
                 <td class="text-center">
                     <span class="text-success"><?= number_format((int) ($j['donaciones'] ?? 0)) ?></span><span class="text-muted">/</span><span class="text-danger"><?= number_format((int) ($j['donaciones_recibidas'] ?? 0)) ?></span>
                 </td>
