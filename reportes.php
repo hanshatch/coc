@@ -68,11 +68,11 @@ function alertas(array $j, bool $hayCwl, bool $hayCapital): array
 {
     $a = [];
 
-    if ($hayCwl) {
-        $ataques = (int) ($j['cwl_ataques'] ?? 0);
-        if ($j['cwl_ataques'] === null) {
-            $a[] = 'Fuera del roster de CWL';
-        } elseif ($ataques === 0) {
+    // Quedar fuera del roster de CWL no se cuenta: el roster lo arma la
+    // dirigencia, no el jugador. Solo cuenta lo que hizo quien sí entró.
+    if ($hayCwl && $j['cwl_ataques'] !== null) {
+        $ataques = (int) $j['cwl_ataques'];
+        if ($ataques === 0) {
             $a[] = 'No atacó en CWL';
         } elseif ($ataques < 4) {
             $a[] = 'Pocos ataques en CWL';
