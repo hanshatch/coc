@@ -59,23 +59,23 @@ $currentName = str_replace('.php', '', $currentPage);
         <a href="sincronizar" class="nav-link <?= $currentName === 'sincronizar' ? 'active' : '' ?>">
             <span class="nav-icon"><i class="bi bi-arrow-repeat"></i></span> Sincronizar Clan
         </a>
-        <a href="guerras" class="nav-link <?= $currentName === 'guerras' || $currentName === 'guerra_detalle' ? 'active' : '' ?>">
+        <a href="guerras" class="nav-link <?= $currentName === 'guerras' ? 'active' : '' ?>">
             <span class="nav-icon"><i class="bi bi-lightning-fill"></i></span> Guerras
         </a>
         <a href="cwl" class="nav-link <?= $currentName === 'cwl' || $currentName === 'cwl_detalle' ? 'active' : '' ?>">
             <span class="nav-icon"><i class="bi bi-trophy-fill"></i></span> Liga de guerras
         </a>
-        <a href="juegos" class="nav-link <?= $currentName === 'juegos' || $currentName === 'juegos_detalle' ? 'active' : '' ?>">
+        <a href="juegos" class="nav-link <?= $currentName === 'juegos' ? 'active' : '' ?>">
             <span class="nav-icon"><i class="bi bi-controller"></i></span> Juegos del Clan
         </a>
-        <a href="donaciones" class="nav-link <?= $currentName === 'donaciones' || $currentName === 'donaciones_detalle' ? 'active' : '' ?>">
+        <a href="donaciones" class="nav-link <?= $currentName === 'donaciones' ? 'active' : '' ?>">
             <span class="nav-icon"><i class="bi bi-gift-fill"></i></span> Donaciones
         </a>
         <a href="capital" class="nav-link <?= $currentName === 'capital' || $currentName === 'capital_detalle' ? 'active' : '' ?>">
             <span class="nav-icon"><i class="bi bi-building-fill"></i></span> Capital de Clan
         </a>
         <a href="reportes" class="nav-link <?= $currentName === 'reportes' ? 'active' : '' ?>">
-            <span class="nav-icon"><i class="bi bi-bar-chart-fill"></i></span> Reporte Rendimiento
+            <span class="nav-icon"><i class="bi bi-clipboard-data-fill"></i></span> Decisiones
         </a>
 
         <?php if ($user && $user['rol'] === 'admin'): ?>

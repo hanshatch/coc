@@ -1,130 +1,40 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Detalle de una temporada de CWL. Solo lectura desde la API.
+ */
+
 require_once __DIR__ . '/includes/auth.php';
 requireLogin();
 
 $db = getDB();
 $id = (int) ($_GET['id'] ?? 0);
-if ($id <= 0) { header('Location: cwl'); exit; }
 
 $stmt = $db->prepare('SELECT * FROM cwl_temporadas WHERE id = ?');
 $stmt->execute([$id]);
 $temp = $stmt->fetch();
-if (!$temp) { setFlash('error', 'Temporada no encontrada.'); header('Location: cwl'); exit; }
-
-// ── Agregar jugadores ─────────────────────────────────────────
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_players'])) {
-    verifyCsrf();
-    $playerIds = $_POST['jugador_ids'] ?? [];
-    if (!empty($playerIds)) {
-        $stmt = $db->prepare('INSERT IGNORE INTO cwl_participaciones (temporada_id, jugador_id, dia) VALUES (?, ?, 1)');
-        foreach ($playerIds as $pid) {
-            $stmt->execute([$id, (int) $pid]);
-        }
-        logActivity('crear', 'cwl_participaciones', $id, 'Agregados ' . count($playerIds) . ' jugadores');
-        setFlash('success', count($playerIds) . ' jugador(es) agregado(s) al roster.');
-    }
-    header('Location: cwl_detalle?id=' . $id); exit;
+if (!$temp) {
+    setFlash('error', 'Temporada no encontrada.');
+    header('Location: cwl');
+    exit;
 }
 
-// ── Guardar participaciones ───────────────────────────────────
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_participation'])) {
-    verifyCsrf();
-    $participo  = $_POST['participo'] ?? [];
-    $estrellas  = $_POST['estrellas'] ?? [];
-    $porcentaje = $_POST['porcentaje'] ?? [];
-    $ataques    = $_POST['ataques'] ?? [];
-
-    $stmt = $db->prepare(
-        'UPDATE cwl_participaciones SET participo=?, estrellas=?, porcentaje=?
-         WHERE temporada_id=? AND jugador_id=? AND dia=?'
-    );
-
-    // Intentar actualizar ataques y bonus por separado (requieren columnas en BD)
-    $stmtExtras = null;
-    try {
-        $stmtExtras = $db->prepare(
-            'UPDATE cwl_participaciones SET ataques=?, bonus=?
-             WHERE temporada_id=? AND jugador_id=? AND dia=?'
-        );
-    } catch (\PDOException $e) { /* columnas aún no existen */ }
-
-    // Iteramos sobre todos los jugadores usando estrellas como referencia (los checkboxes no se envían si están desmarcados)
-    $todosJids = array_unique(array_merge(array_keys($estrellas), array_keys($porcentaje), array_keys($ataques)));
-
-    $bonuses = $_POST['bonus'] ?? [];
-
-    foreach ($todosJids as $jid) {
-        $jid = (int) $jid;
-        $est = ($estrellas[$jid] ?? '') !== '' ? min(21, max(0, (int) $estrellas[$jid])) : null;
-        
-        // Auto-marcar participación si tiene estrellas
-        $par = (isset($participo[$jid]) || $est > 0) ? 1 : 0;
-        
-        $pct = ($porcentaje[$jid] ?? '') !== '' ? min(700, max(0, (int) $porcentaje[$jid])) : null;
-        $atq = ($ataques[$jid]  ?? '') !== '' ? min(7,   max(0, (int) $ataques[$jid]))  : null;
-        $bon = isset($bonuses[$jid]) ? 1 : 0;
-
-        $stmt->execute([$par, $est, $pct, $id, $jid, 1]);
-        if ($stmtExtras) {
-            $stmtExtras->execute([$atq, $bon, $id, $jid, 1]);
-        }
-    }
-
-    logActivity('editar', 'cwl_participaciones', $id, 'Participaciones actualizadas');
-    setFlash('success', 'Participaciones CWL guardadas.');
-    header('Location: cwl_detalle?id=' . $id); exit;
-}
-
-// ── Remover jugador del roster ────────────────────────────────
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['remove_jugador'])) {
-    verifyCsrf();
-    $removeJid = (int) $_POST['remove_jugador'];
-    $db->prepare('DELETE FROM cwl_participaciones WHERE temporada_id=? AND jugador_id=?')
-       ->execute([$id, $removeJid]);
-    logActivity('eliminar', 'cwl_participaciones', $id, 'Jugador removido del roster: ' . $removeJid);
-    setFlash('success', 'Jugador removido de esta temporada.');
-    header('Location: cwl_detalle?id=' . $id); exit;
-}
-
-// ── Datos ─────────────────────────────────────────────────────
-$rawParticipaciones = $db->prepare(
-    'SELECT cp.*, j.usuario, j.rol_clan
-     FROM cwl_participaciones cp
-     JOIN jugadores j ON cp.jugador_id = j.id
-     WHERE cp.temporada_id = ?
-     ORDER BY j.usuario ASC, cp.dia ASC'
+$stmt = $db->prepare(
+    'SELECT p.*, j.nombre_juego, j.tag, j.activo
+       FROM cwl_participaciones p
+       JOIN jugadores j ON j.id = p.jugador_id
+      WHERE p.temporada_id = ?
+      ORDER BY p.estrellas DESC, p.porcentaje DESC'
 );
-$rawParticipaciones->execute([$id]);
-$rawParticipaciones = $rawParticipaciones->fetchAll();
+$stmt->execute([$id]);
+$filas = $stmt->fetchAll();
 
-// Agrupar por jugador (solo tomamos el primer registro como Total)
-$jugadores = [];
-foreach ($rawParticipaciones as $row) {
-    if ($row['dia'] != 1) continue; // Ignoramos otros días si existen
-    $jid = $row['jugador_id'];
-    $jugadores[$jid] = [
-        'nombre'     => $row['usuario'],
-        'rol_clan'   => $row['rol_clan'],
-        'estrellas'  => $row['estrellas'],
-        'porcentaje' => $row['porcentaje'],
-        'participo'  => $row['participo'],
-        'ataques'    => $row['ataques'] ?? null,
-        'bonus'      => $row['bonus'] ?? 0,
-    ];
-}
+$totEstrellas = array_sum(array_column($filas, 'estrellas'));
+$totAtaques   = array_sum(array_column($filas, 'ataques'));
+$maxAtaques   = count($filas) * 7;
 
-// Jugadores disponibles
-$jugadoresDisp = $db->prepare(
-    'SELECT id, usuario, rol_clan FROM jugadores
-     WHERE activo = 1 AND id NOT IN (SELECT DISTINCT jugador_id FROM cwl_participaciones WHERE temporada_id = ?)
-     ORDER BY usuario ASC'
-);
-$jugadoresDisp->execute([$id]);
-$jugadoresDisp = $jugadoresDisp->fetchAll();
-
-$pageTitle = 'CWL — ' . $temp['mes'];
+$pageTitle = 'CWL ' . $temp['mes'];
 require __DIR__ . '/includes/header.php';
 ?>
 
@@ -134,337 +44,48 @@ require __DIR__ . '/includes/header.php';
 </div>
 
 <div class="row g-3 mb-4">
-    <div class="col-md-4"><div class="stat-card"><div class="stat-icon">🏆</div><div class="stat-value"><?= clean($temp['liga'] ?? '—') ?></div><div class="stat-label">Liga</div></div></div>
-    <div class="col-md-4"><div class="stat-card"><div class="stat-icon">🏅</div><div class="stat-value"><?= $temp['posicion_final'] ? $temp['posicion_final'] . '°' : '—' ?></div><div class="stat-label">Posición Final</div></div></div>
-    <div class="col-md-4"><div class="stat-card"><div class="stat-icon">👥</div><div class="stat-value"><?= count($jugadores) ?> / <?= (int) $temp['tamano'] ?></div><div class="stat-label">Jugadores en Roster</div></div></div>
+    <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon">👥</div><div class="stat-value"><?= count($filas) ?></div><div class="stat-label">En el roster</div></div></div>
+    <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon">⭐</div><div class="stat-value"><?= $totEstrellas ?></div><div class="stat-label">Estrellas</div></div></div>
+    <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon">🎯</div><div class="stat-value"><?= $totAtaques ?>/<?= $maxAtaques ?></div><div class="stat-label">Ataques usados</div></div></div>
+    <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon">📊</div><div class="stat-value"><?= $totAtaques ? round($totEstrellas / $totAtaques, 1) : 0 ?></div><div class="stat-label">Estrellas por ataque</div></div></div>
 </div>
 
-<?php if (!empty($jugadoresDisp)): ?>
-<div class="card mb-4 mb-5 border-primary">
-    <div class="card-header d-flex justify-content-between align-items-center bg-surface2">
-        <span class="text-gold">
-            <i class="bi bi-person-plus-fill"></i> Seleccionar Participantes 
-            <small class="ms-2 text-muted">(Seleccionados: <span id="selectedCount">0</span> / <?= ($temp['tamano'] - count($jugadores)) ?>)</small>
-        </span>
-        <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#addPlayersForm">
-            <i class="bi bi-chevron-down"></i> Panel de Selección
-        </button>
-    </div>
-    <div class="collapse" id="addPlayersForm">
-        <div class="card-body">
-            <form method="POST">
-                <?= csrfField() ?>
-                <input type="hidden" name="add_players" value="1">
-                
-                <!-- Buscador y Acciones -->
-                <div class="row g-2 mb-3">
-                    <div class="col-md-8">
-                        <div class="input-group input-group-sm">
-                            <span class="input-group-text bg-surface border-secondary text-muted"><i class="bi bi-search"></i></span>
-                            <input type="text" id="playerSearch" class="form-control bg-surface border-secondary text-white" placeholder="Filtrar jugadores por usuario...">
-                        </div>
-                    </div>
-                    <div class="col-md-4 d-flex gap-2">
-                        <button type="button" class="btn btn-sm btn-outline-secondary w-100" onclick="toggleAllPlayers(true)">Todos</button>
-                        <button type="button" class="btn btn-sm btn-outline-secondary w-100" onclick="toggleAllPlayers(false)">Ninguno</button>
-                    </div>
-                </div>
-
-                <!-- Rejilla de Jugadores -->
-                <div class="player-selection-grid mb-3" style="max-height: 250px; overflow-y: auto;">
-                    <div class="row g-2" id="playerGrid">
-                        <?php foreach ($jugadoresDisp as $j): ?>
-                            <div class="col-6 col-md-4 col-lg-3 player-item" data-name="<?= strtolower(clean($j['usuario'])) ?>">
-                                <div class="player-checkbox-card">
-                                    <input type="checkbox" name="jugador_ids[]" value="<?= $j['id'] ?>" id="p_<?= $j['id'] ?>" class="btn-check participant-checkbox">
-                                    <label class="btn btn-outline-surface w-100 text-start text-truncate d-flex justify-content-between align-items-center" for="p_<?= $j['id'] ?>">
-                                        <span><i class="bi bi-person"></i> <?= clean($j['usuario']) ?></span>
-                                        <small class="text-muted opacity-50" style="font-size: 0.7rem;"><?= strtoupper($j['rol_clan'] ?? 'miembro') ?></small>
-                                    </label>
-                                </div>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
-
-                <div class="text-end">
-                    <button type="submit" class="btn btn-primary px-4 py-2 fw-bold text-dark border-0 shadow-glow transition-all" style="background-color: var(--ct-gold);">
-                        <i class="bi bi-plus-lg me-1"></i> AGREGAR AL ESCUADRÓN
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<script>
-const selectionLimit = <?= (int) ($temp['tamano'] - count($jugadores)) ?>;
-
-function updateSelectionCounter() {
-    const checked = document.querySelectorAll('.participant-checkbox:checked').length;
-    document.getElementById('selectedCount').textContent = checked;
-    
-    // Disable unchecked if limit reached
-    const unchecked = document.querySelectorAll('.participant-checkbox:not(:checked)');
-    if (checked >= selectionLimit) {
-        unchecked.forEach(cb => cb.disabled = true);
-    } else {
-        unchecked.forEach(cb => cb.disabled = false);
-    }
-}
-
-document.querySelectorAll('.participant-checkbox').forEach(cb => {
-    cb.addEventListener('change', updateSelectionCounter);
-});
-
-document.getElementById('playerSearch')?.addEventListener('input', function(e) {
-    const q = e.target.value.toLowerCase();
-    document.querySelectorAll('.player-item').forEach(item => {
-        const name = item.getAttribute('data-name');
-        item.style.display = name.includes(q) ? 'block' : 'none';
-    });
-});
-
-function toggleAllPlayers(checked) {
-    const checkboxes = document.querySelectorAll('#playerGrid input[type="checkbox"]');
-    let count = document.querySelectorAll('.participant-checkbox:checked').length;
-    
-    checkboxes.forEach(cb => {
-        if (cb.closest('.player-item').style.display !== 'none') {
-            if (checked && count < selectionLimit && !cb.checked) {
-                cb.checked = true;
-                count++;
-            } else if (!checked) {
-                cb.checked = false;
-                count = 0;
-            }
-        }
-    });
-    updateSelectionCounter();
-}
-</script>
-
-<style>
-/* Premium UI Tweaks (Theme Factory & Frontend Design) */
-.btn-outline-surface {
-    color: var(--ct-text);
-    border-color: var(--ct-border);
-    background: rgba(26, 29, 39, 0.4);
-    font-size: 0.9rem;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-.btn-outline-surface:hover {
-    border-color: var(--ct-gold);
-    transform: translateY(-1px);
-}
-.btn-check:checked + .btn-outline-surface {
-    background: rgba(196, 155, 55, 0.15); /* Gold tinted */
-    border-color: var(--ct-gold);
-    color: var(--ct-gold);
-    box-shadow: 0 0 12px rgba(196, 155, 55, 0.15);
-}
-
-/* Premium Inputs */
-.form-control, .form-select {
-    background: rgba(255, 255, 255, 0.03) !important;
-    border: 1px solid var(--ct-border) !important;
-    color: var(--ct-text) !important;
-    transition: all 0.2s ease;
-}
-.form-control:focus, .form-select:focus {
-    border-color: var(--ct-gold) !important;
-    box-shadow: 0 0 0 3px rgba(196, 155, 55, 0.2) !important;
-}
-
-/* Table Hover & Transitions */
-#rosterTable tbody tr {
-    transition: background-color 0.2s ease;
-}
-#rosterTable tbody tr:hover {
-    background-color: rgba(255, 255, 255, 0.03);
-}
-
-/* Micro-animations */
-.shadow-glow:hover {
-    box-shadow: 0 4px 20px rgba(196, 155, 55, 0.4);
-    transform: translateY(-2px);
-}
-.transition-all { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
-
-/* Scrollbar */
-.player-selection-grid::-webkit-scrollbar { width: 6px; }
-.player-selection-grid::-webkit-scrollbar-thumb { background: var(--ct-border); border-radius: 10px; }
-.hover-opacity-100:hover { opacity: 1 !important; }
-.text-nowrap { white-space: nowrap !important; }
-</style>
-<?php endif; ?>
-
-<?php if (empty($jugadores)): ?>
-    <div class="empty-state"><div class="empty-icon">🏆</div><p>No hay jugadores en el roster de esta temporada.</p></div>
+<?php if (!$filas): ?>
+    <div class="empty-state"><div class="empty-icon">🏆</div><p>Sin participaciones registradas.</p></div>
 <?php else: ?>
-    <!-- Filtro de la tabla -->
-    <div class="card mb-3">
-        <div class="card-body py-2">
-            <div class="row align-items-center">
-                <div class="col-md-6">
-                    <div class="input-group input-group-sm">
-                        <span class="input-group-text bg-surface border-secondary text-muted"><i class="bi bi-funnel"></i></span>
-                        <input type="text" id="rosterFilter" class="form-control bg-surface border-secondary text-white" placeholder="Filtrar por nombre...">
-                        <button class="btn btn-outline-secondary btn-sm" type="button" onclick="document.getElementById('rosterFilter').value=''; filterRoster();">
-                            <i class="bi bi-x"></i>
-                        </button>
-                    </div>
-                </div>
-                <div class="col-md-6 text-end d-none d-md-block">
-                    <span class="text-muted small">Mostrando <span id="rosterVisible"><?= count($jugadores) ?></span> de <?= count($jugadores) ?> jugadores</span>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Formulario aparte: los botones de remover lo invocan vía atributo form= -->
-    <form method="POST" id="removeForm"><?= csrfField() ?></form>
-
-    <form method="POST">
-        <?= csrfField() ?><input type="hidden" name="save_participation" value="1">
-        <div class="card"><div class="table-responsive">
-            <table id="rosterTable" class="table table-hover mb-0" style="font-size:.85rem">
-                <thead>
-                    <tr>
-                        <th style="min-width: 200px;">Jugador</th>
-                        <th class="text-center">Participó</th>
-                        <th class="text-center">Estrellas Totales</th>
-                        <th class="text-center">% Destrucción</th>
-                        <th class="text-center"># Ataques</th>
-                        <th class="text-center text-gold"><i class="bi bi-gift-fill"></i> Bonus</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($jugadores as $jid => $jd): ?>
-                    <tr data-name="<?= strtolower(clean($jd['nombre'])) ?>">
-                        <td>
-                            <div class="d-flex justify-content-between align-items-start">
-                                <div>
-                                    <div class="fw-bold text-nowrap">
-                                        <?= clean($jd['nombre']) ?>
-                                        <small class="text-muted fw-normal opacity-50 ms-1" style="font-size: 0.65rem;">(<?= strtoupper($jd['rol_clan'] ?? 'miembro') ?>)</small>
-                                    </div>
-                                </div>
-                                <button type="submit" form="removeForm"
-                                        name="remove_jugador" value="<?= (int) $jid ?>"
-                                        class="btn btn-sm btn-link p-1 text-danger opacity-50 hover-opacity-100"
-                                        title="Remover del Roster"
-                                        data-confirm="¿Remover a <?= clean($jd['nombre']) ?> de esta temporada?">
-                                    <i class="bi bi-person-x-fill fs-5"></i>
-                                </button>
-                            </div>
-                        </td>
-                        <td class="text-center">
-                            <input type="checkbox" name="participo[<?= $jid ?>]" value="1"
-                                   class="form-check-input" <?= ($jd['participo']) ? 'checked' : '' ?>>
-                        </td>
-                        <td class="text-center">
-                            <div class="input-group input-group-sm mx-auto" style="width: 100px;">
-                                <span class="input-group-text p-1 text-gold"><i class="bi bi-star-fill small"></i></span>
-                                <input type="number" name="estrellas[<?= $jid ?>]" 
-                                       class="form-control text-center cwl-estrellas" min="0" max="21" placeholder="0-21"
-                                       value="<?= $jd['estrellas'] ?? '' ?>">
-                            </div>
-                        </td>
-                        <td class="text-center">
-                            <div class="input-group input-group-sm mx-auto" style="width: 110px;">
-                                <input type="number" name="porcentaje[<?= $jid ?>]" 
-                                       class="form-control text-center cwl-porcentaje" min="0" max="700" step="1" placeholder="0"
-                                       value="<?= $jd['porcentaje'] !== null ? (int)$jd['porcentaje'] : '' ?>">
-                                <span class="input-group-text px-1 text-muted">%</span>
-                            </div>
-                        </td>
-                        <td class="text-center">
-                            <div class="input-group input-group-sm mx-auto" style="width: 90px;">
-                                <span class="input-group-text p-1 text-muted"><i class="bi bi-sword"></i></span>
-                                <input type="number" name="ataques[<?= $jid ?>]" 
-                                       class="form-control text-center cwl-ataques" min="0" max="7" placeholder="0-7"
-                                       value="<?= $jd['ataques'] ?? '' ?>">
-                            </div>
-                        </td>
-                        <td class="text-center">
-                            <div class="form-check form-switch d-inline-block">
-                                <input class="form-check-input" type="checkbox" name="bonus[<?= $jid ?>]" value="1" <?= $jd['bonus'] ? 'checked' : '' ?>>
-                            </div>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-        </div></div>
-        <div class="mt-4 text-center">
-            <button type="submit" class="btn btn-primary btn-lg px-5 shadow-glow transition-all border-0 text-dark fw-bold" style="background-color: var(--ct-gold);">
-                <i class="bi bi-check-lg me-2"></i> MANTENER ROSTER ACTUALIZADO
-            </button>
-        </div>
-    </form>
+<div class="card"><div class="table-responsive">
+    <table class="table table-hover mb-0">
+        <thead><tr>
+            <th class="text-center">#</th><th>Jugador</th>
+            <th class="text-center">Estrellas</th><th class="text-center">Ataques</th>
+            <th class="text-center">Destrucción</th><th class="text-center">Promedio</th>
+        </tr></thead>
+        <tbody>
+        <?php foreach ($filas as $i => $f):
+            $prom = $f['ataques'] ? round((int) $f['estrellas'] / (int) $f['ataques'], 2) : 0;
+        ?>
+            <tr<?= $f['ataques'] == 0 ? ' class="table-danger-subtle"' : '' ?>>
+                <td class="text-center text-muted"><?= $i + 1 ?></td>
+                <td>
+                    <strong class="text-white"><?= clean($f['nombre_juego']) ?></strong>
+                    <?php if (!$f['activo']): ?><span class="badge badge-red ms-1">Ya no está</span><?php endif; ?>
+                </td>
+                <td class="text-center"><strong><?= (int) $f['estrellas'] ?></strong> <span class="text-muted">/21</span></td>
+                <td class="text-center">
+                    <span class="badge <?= $f['ataques'] >= 6 ? 'badge-green' : ((int) $f['ataques'] >= 4 ? 'badge-gold' : 'badge-red') ?>">
+                        <?= (int) $f['ataques'] ?>/7
+                    </span>
+                </td>
+                <td class="text-center"><?= number_format((float) $f['porcentaje'], 0) ?>%</td>
+                <td class="text-center"><?= $prom ?></td>
+            </tr>
+        <?php endforeach; ?>
+        </tbody>
+    </table>
+</div></div>
+<div class="text-muted text-center mt-3" style="font-size:.85rem">
+    Cada jugador puede atacar una vez por ronda, siete en total. Las filas resaltadas no atacaron ninguna vez.
+</div>
 <?php endif; ?>
-
-<script>
-function filterRoster() {
-    const q = document.getElementById('rosterFilter').value.toLowerCase();
-    const rows = document.querySelectorAll('#rosterTable tbody tr');
-    let visible = 0;
-    rows.forEach(row => {
-        const name = row.getAttribute('data-name') || '';
-        if (name.includes(q)) { row.style.display = ''; visible++; }
-        else row.style.display = 'none';
-    });
-    const counter = document.getElementById('rosterVisible');
-    if (counter) counter.textContent = visible;
-}
-document.getElementById('rosterFilter')?.addEventListener('input', filterRoster);
-
-// Validación al guardar
-document.querySelector('form[method="POST"]')?.addEventListener('submit', function(e) {
-    let errors = [];
-
-    document.querySelectorAll('.cwl-estrellas').forEach(inp => {
-        const v = inp.value;
-        if (v !== '' && (parseInt(v) < 0 || parseInt(v) > 21)) {
-            inp.classList.add('is-invalid');
-            errors.push('Estrellas debe estar entre 0 y 21.');
-        } else inp.classList.remove('is-invalid');
-    });
-
-    document.querySelectorAll('.cwl-porcentaje').forEach(inp => {
-        const v = inp.value;
-        if (v !== '' && (parseInt(v) < 0 || parseInt(v) > 700)) {
-            inp.classList.add('is-invalid');
-            errors.push('Destrucción debe estar entre 0 y 700.');
-        } else {
-            inp.classList.remove('is-invalid');
-            // Remover decimales al vuelo
-            if (v.includes('.')) inp.value = Math.round(parseFloat(v));
-        }
-    });
-
-    document.querySelectorAll('.cwl-ataques').forEach(inp => {
-        const v = inp.value;
-        if (v !== '' && (parseInt(v) < 0 || parseInt(v) > 7)) {
-            inp.classList.add('is-invalid');
-            errors.push('Ataques debe estar entre 0 y 7.');
-        } else inp.classList.remove('is-invalid');
-    });
-
-    if (errors.length > 0) {
-        e.preventDefault();
-        const unique = [...new Set(errors)];
-        alert('⚠️ Errores de validación:\n\n' + unique.join('\n'));
-    }
-});
-
-// Quitar decimales en tiempo real al escribir en porcentaje
-document.querySelectorAll('.cwl-porcentaje').forEach(inp => {
-    inp.addEventListener('blur', () => {
-        if (inp.value !== '') inp.value = Math.round(parseFloat(inp.value));
-    });
-});
-</script>
 
 <?php require __DIR__ . '/includes/footer.php'; ?>

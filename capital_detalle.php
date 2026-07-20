@@ -1,148 +1,87 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Detalle de un fin de semana de asalto. Solo lectura desde la API.
+ */
+
 require_once __DIR__ . '/includes/auth.php';
 requireLogin();
 
 $db = getDB();
 $id = (int) ($_GET['id'] ?? 0);
-if ($id <= 0) { header('Location: capital'); exit; }
 
 $stmt = $db->prepare('SELECT * FROM capital_semanas WHERE id = ?');
 $stmt->execute([$id]);
 $semana = $stmt->fetch();
-if (!$semana) { setFlash('error', 'No encontrada.'); header('Location: capital'); exit; }
-
-// ── Agregar jugadores ─────────────────────────────────────────
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_players'])) {
-    verifyCsrf();
-    $playerIds = $_POST['jugador_ids'] ?? [];
-    if (!empty($playerIds)) {
-        $stmt = $db->prepare('INSERT IGNORE INTO capital_participaciones (semana_id, jugador_id) VALUES (?, ?)');
-        foreach ($playerIds as $pid) { $stmt->execute([$id, (int) $pid]); }
-        logActivity('crear', 'capital_participaciones', $id, 'Agregados ' . count($playerIds) . ' jugadores');
-        setFlash('success', count($playerIds) . ' jugador(es) agregado(s).');
-    }
-    header('Location: capital_detalle?id=' . $id); exit;
+if (!$semana) {
+    setFlash('error', 'Fin de semana no encontrado.');
+    header('Location: capital');
+    exit;
 }
 
-// ── Guardar participaciones ───────────────────────────────────
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_participation'])) {
-    verifyCsrf();
-    $oro      = $_POST['oro_aportado'] ?? [];
-    $ataques  = $_POST['ataques_realizados'] ?? [];
-    $medallas = $_POST['medallas_obtenidas'] ?? [];
-
-    $stmtUp = $db->prepare(
-        'UPDATE capital_participaciones SET oro_aportado=?, ataques_realizados=?, medallas_obtenidas=? WHERE semana_id=? AND jugador_id=?'
-    );
-
-    $totalOro = 0;
-    foreach ($oro as $jid => $val) {
-        $val      = (int) $val;
-        $ats      = (int) ($ataques[$jid] ?? 0);
-        $med      = (int) ($medallas[$jid] ?? 0);
-        $stmtUp->execute([$val, $ats, $med, $id, (int) $jid]);
-        $totalOro += $val;
-    }
-
-    // Actualizar total en semana
-    $db->prepare('UPDATE capital_semanas SET oro_total_recaudado=? WHERE id=?')->execute([$totalOro, $id]);
-
-    logActivity('editar', 'capital_participaciones', $id, "Oro total: $totalOro");
-    setFlash('success', 'Participaciones de capital guardadas.');
-    header('Location: capital_detalle?id=' . $id); exit;
-}
-
-// ── Datos ─────────────────────────────────────────────────────
-$participaciones = $db->prepare(
-    'SELECT cp.*, j.usuario, j.usuario
-     FROM capital_participaciones cp
-     JOIN jugadores j ON cp.jugador_id = j.id
-     WHERE cp.semana_id = ?
-     ORDER BY cp.oro_aportado DESC, j.usuario ASC'
+$stmt = $db->prepare(
+    'SELECT p.*, j.nombre_juego, j.tag, j.activo
+       FROM capital_participaciones p
+       JOIN jugadores j ON j.id = p.jugador_id
+      WHERE p.semana_id = ?
+      ORDER BY p.oro_aportado DESC'
 );
-$participaciones->execute([$id]);
-$participaciones = $participaciones->fetchAll();
+$stmt->execute([$id]);
+$filas = $stmt->fetchAll();
 
-$jugadoresDisp = $db->prepare(
-    'SELECT id, usuario FROM jugadores
-     WHERE activo = 1 AND id NOT IN (SELECT jugador_id FROM capital_participaciones WHERE semana_id = ?)
-     ORDER BY usuario ASC'
-);
-$jugadoresDisp->execute([$id]);
-$jugadoresDisp = $jugadoresDisp->fetchAll();
+$oroJugadores = array_sum(array_column($filas, 'oro_aportado'));
 
-$pageTitle = 'Capital — ' . date('d/m/Y', strtotime($semana['fecha_inicio']));
+$pageTitle = 'Capital ' . date('d/m/Y', strtotime($semana['fecha_inicio']));
 require __DIR__ . '/includes/header.php';
 ?>
 
 <div class="ct-page-header">
-    <h1><i class="bi bi-building-fill"></i> Semana de Raid</h1>
+    <h1><i class="bi bi-building-fill"></i> Asalto del <?= date('d/m/Y', strtotime($semana['fecha_inicio'])) ?></h1>
     <a href="capital" class="btn btn-secondary btn-sm"><i class="bi bi-arrow-left"></i> Volver</a>
 </div>
 
 <div class="row g-3 mb-4">
-    <div class="col-md-3"><div class="stat-card"><div class="stat-icon">💰</div><div class="stat-value"><?= number_format(array_sum(array_column($participaciones, 'oro_aportado'))) ?></div><div class="stat-label">Oro Aportado</div></div></div>
-    <div class="col-md-3"><div class="stat-card"><div class="stat-icon">⚔️</div><div class="stat-value"><?= (int) $semana['ataques_totales'] ?></div><div class="stat-label">Ataques Totales</div></div></div>
-    <div class="col-md-3"><div class="stat-card"><div class="stat-icon">🏘️</div><div class="stat-value"><?= (int) $semana['distritos_destruidos'] ?></div><div class="stat-label">Distritos Destruidos</div></div></div>
-    <div class="col-md-3"><div class="stat-card"><div class="stat-icon">👥</div><div class="stat-value"><?= count($participaciones) ?></div><div class="stat-label">Participantes</div></div></div>
+    <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon">🪙</div><div class="stat-value"><?= number_format((int) $semana['oro_total_recaudado']) ?></div><div class="stat-label">Oro del clan</div></div></div>
+    <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon">👥</div><div class="stat-value"><?= count($filas) ?></div><div class="stat-label">Participantes</div></div></div>
+    <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon">⚔️</div><div class="stat-value"><?= (int) $semana['ataques_totales'] ?></div><div class="stat-label">Ataques</div></div></div>
+    <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon">🏘️</div><div class="stat-value"><?= (int) $semana['distritos_destruidos'] ?></div><div class="stat-label">Distritos</div></div></div>
 </div>
 
-<?php if (!empty($jugadoresDisp)): ?>
-<div class="card mb-4">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <span><i class="bi bi-person-plus"></i> Agregar Jugadores</span>
-        <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#addPlayersForm"><i class="bi bi-plus-lg"></i></button>
-    </div>
-    <div class="collapse" id="addPlayersForm"><div class="card-body">
-        <form method="POST">
-            <?= csrfField() ?><input type="hidden" name="add_players" value="1">
-            <div class="row g-2 align-items-end">
-                <div class="col-md-8">
-                    <select name="jugador_ids[]" class="form-select" multiple size="5">
-                        <?php foreach ($jugadoresDisp as $j): ?><option value="<?= $j['id'] ?>"><?= clean($j['usuario']) ?></option><?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="col-md-4"><button type="submit" class="btn btn-primary w-100"><i class="bi bi-plus-lg"></i> Agregar</button></div>
-            </div>
-        </form>
-    </div></div>
-</div>
-<?php endif; ?>
-
-<?php if (empty($participaciones)): ?>
-    <div class="empty-state"><div class="empty-icon">🏰</div><p>No hay registro de participaciones aún.</p></div>
+<?php if (!$filas): ?>
+    <div class="empty-state"><div class="empty-icon">🏰</div><p>Sin desglose por jugador para este fin de semana.</p></div>
 <?php else: ?>
-    <form method="POST">
-        <?= csrfField() ?><input type="hidden" name="save_participation" value="1">
-        <div class="row g-3">
-            <?php foreach ($participaciones as $p): ?>
-            <div class="col-md-6 col-lg-4">
-                <div class="participation-card">
-                    <div class="player-name"><?= clean($p['usuario']) ?></div>
-                    <div class="row g-2">
-                        <div class="col-12">
-                            <label class="form-label">Oro Aportado</label>
-                            <input type="number" name="oro_aportado[<?= $p['jugador_id'] ?>]" class="form-control" min="0" value="<?= (int) $p['oro_aportado'] ?>">
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label">Ataques</label>
-                            <input type="number" name="ataques_realizados[<?= $p['jugador_id'] ?>]" class="form-control" min="0" max="6" value="<?= (int) $p['ataques_realizados'] ?>">
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label">Medallas</label>
-                            <input type="number" name="medallas_obtenidas[<?= $p['jugador_id'] ?>]" class="form-control" min="0" value="<?= (int) $p['medallas_obtenidas'] ?>">
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <?php endforeach; ?>
-        </div>
-        <div class="mt-4 text-center">
-            <button type="submit" class="btn btn-primary btn-lg"><i class="bi bi-check-lg"></i> Guardar Capital</button>
-        </div>
-    </form>
+<div class="card"><div class="table-responsive">
+    <table class="table table-hover mb-0">
+        <thead><tr>
+            <th class="text-center">#</th><th>Jugador</th>
+            <th class="text-center">Oro aportado</th><th class="text-center">Ataques</th><th class="text-center">Oro por ataque</th>
+        </tr></thead>
+        <tbody>
+        <?php foreach ($filas as $i => $f):
+            $porAtaque = $f['ataques_realizados'] ? (int) round((int) $f['oro_aportado'] / (int) $f['ataques_realizados']) : 0;
+        ?>
+            <tr>
+                <td class="text-center text-muted"><?= $i + 1 ?></td>
+                <td>
+                    <strong class="text-white"><?= clean($f['nombre_juego']) ?></strong>
+                    <?php if (!$f['activo']): ?><span class="badge badge-red ms-1">Ya no está</span><?php endif; ?>
+                </td>
+                <td class="text-center"><strong><?= number_format((int) $f['oro_aportado']) ?></strong></td>
+                <td class="text-center">
+                    <span class="badge <?= $f['ataques_realizados'] >= 6 ? 'badge-green' : ((int) $f['ataques_realizados'] >= 4 ? 'badge-gold' : 'badge-red') ?>">
+                        <?= (int) $f['ataques_realizados'] ?>
+                    </span>
+                </td>
+                <td class="text-center text-muted"><?= number_format($porAtaque) ?></td>
+            </tr>
+        <?php endforeach; ?>
+        </tbody>
+    </table>
+</div></div>
+<div class="text-muted text-center mt-3" style="font-size:.85rem">
+    Los jugadores suman <?= number_format((int) $oroJugadores) ?> de los <?= number_format((int) $semana['oro_total_recaudado']) ?> del clan.
+</div>
 <?php endif; ?>
 
 <?php require __DIR__ . '/includes/footer.php'; ?>

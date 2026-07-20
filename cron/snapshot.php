@@ -4,13 +4,14 @@ declare(strict_types=1);
 /**
  * Captura diaria del estado del clan.
  *
- * Se ejecuta desde el cron de Hostinger:
- *   /usr/bin/php /home/USUARIO/.../\_coc/cron/snapshot.php
+ * Cron de Hostinger:
+ *   30 5 * * *  /usr/bin/php /home/USUARIO/.../\_coc/cron/snapshot.php
  *
- * La API de Clash of Clans no guarda historial: las donaciones se
- * reinician cada temporada y el detalle por jugador de los asaltos de
- * capital solo existe para el fin de semana más reciente. Este script
- * levanta una lectura diaria para que el historial se construya solo.
+ * La API de Clash of Clans es una foto del presente, no un archivo: las
+ * donaciones se reinician cada temporada, el detalle por jugador de los
+ * asaltos de capital solo existe para el fin de semana más reciente, y
+ * los Juegos del Clan solo se miden restando dos lecturas del acumulado
+ * de por vida. Sin esta captura diaria, esos datos se pierden.
  *
  * Cada bloque va en su propio try/catch: que falle uno no debe impedir
  * que los demás guarden lo suyo.
@@ -42,15 +43,13 @@ function paso(string $nombre, callable $fn): void
     }
 }
 
-echo "=== Captura diaria $inicio (UTC) ===\n";
+echo "=== Captura diaria $inicio ===\n";
 
-// ── 1. Roster: altas, bajas y cambios de rol ──────────────────
 paso('roster', function (): string {
     $r = cocAplicarSync(cocDiffRoster());
     return sprintf('%d actualizados, %d altas, %d bajas', $r['actualizados'], $r['altas'], $r['bajas']);
 });
 
-// ── 2. Estado del clan ────────────────────────────────────────
 paso('clan', function () use ($db, $hoy): string {
     $c = cocClan();
     $db->prepare(
@@ -77,7 +76,6 @@ paso('clan', function () use ($db, $hoy): string {
     return sprintf('%d miembros, nivel %s', $c['members'] ?? 0, $c['clanLevel'] ?? '?');
 });
 
-// ── 3. Estado de cada jugador activo ──────────────────────────
 paso('jugadores', function () use ($db, $hoy): string {
     $logro = static function (array $p, string $nombre): ?int {
         foreach ($p['achievements'] ?? [] as $a) {
@@ -102,7 +100,7 @@ paso('jugadores', function () use ($db, $hoy): string {
     );
 
     $ok = $fallos = 0;
-    foreach ($db->query('SELECT id, tag FROM jugadores WHERE activo = 1 AND tag IS NOT NULL') as $j) {
+    foreach ($db->query('SELECT id, tag FROM jugadores WHERE activo = 1') as $j) {
         try {
             $p = cocGet('/players/' . rawurlencode($j['tag']));
             $stmt->execute([
@@ -127,134 +125,25 @@ paso('jugadores', function () use ($db, $hoy): string {
     return "$ok capturados" . ($fallos ? ", $fallos fallaron" : '');
 });
 
-// ── 4. Asaltos de capital ─────────────────────────────────────
-// El detalle por jugador solo viene del fin de semana más reciente,
-// así que hay que pasar por aquí antes de que empiece el siguiente.
-paso('capital', function () use ($db): string {
-    $c = cocGet('/clans/' . rawurlencode(cocNormalizarTag(COC_CLAN_TAG)) . '/capitalraidseasons?limit=10');
-
-    $porTag = [];
-    foreach ($db->query('SELECT id, tag FROM jugadores WHERE tag IS NOT NULL') as $r) {
-        $porTag[$r['tag']] = (int) $r['id'];
-    }
-
-    $busca  = $db->prepare('SELECT id FROM capital_semanas WHERE fecha_inicio = ?');
-    $ins    = $db->prepare('INSERT INTO capital_semanas (fecha_inicio, fecha_fin, oro_total_recaudado, ataques_totales, distritos_destruidos, notas) VALUES (?,?,?,?,?,?)');
-    $upd    = $db->prepare('UPDATE capital_semanas SET fecha_fin=?, oro_total_recaudado=?, ataques_totales=?, distritos_destruidos=? WHERE id=?');
-    $bPart  = $db->prepare('SELECT id FROM capital_participaciones WHERE semana_id=? AND jugador_id=?');
-    $iPart  = $db->prepare('INSERT INTO capital_participaciones (semana_id, jugador_id, oro_aportado, ataques_realizados, medallas_obtenidas) VALUES (?,?,?,?,0)');
-    $uPart  = $db->prepare('UPDATE capital_participaciones SET oro_aportado=?, ataques_realizados=? WHERE id=?');
-
-    $semanas = $detalle = 0;
-    foreach ($c['items'] ?? [] as $s) {
-        $iniF = date('Y-m-d', strtotime(substr((string) $s['startTime'], 0, 8)));
-        $finF = date('Y-m-d', strtotime(substr((string) $s['endTime'], 0, 8)));
-        $busca->execute([$iniF]);
-        $sid = $busca->fetchColumn();
-
-        if ($sid) {
-            $upd->execute([$finF, $s['capitalTotalLoot'] ?? 0, $s['totalAttacks'] ?? 0, $s['enemyDistrictsDestroyed'] ?? 0, $sid]);
-        } else {
-            $ins->execute([$iniF, $finF, $s['capitalTotalLoot'] ?? 0, $s['totalAttacks'] ?? 0, $s['enemyDistrictsDestroyed'] ?? 0, 'Capturado por el cron.']);
-            $sid = (int) $db->lastInsertId();
-            $semanas++;
-        }
-
-        foreach ($s['members'] ?? [] as $m) {
-            $jid = $porTag[$m['tag']] ?? null;
-            if (!$jid) {
-                continue;
-            }
-            $bPart->execute([$sid, $jid]);
-            $pid = $bPart->fetchColumn();
-            if ($pid) {
-                $uPart->execute([$m['capitalResourcesLooted'] ?? 0, $m['attacks'] ?? 0, $pid]);
-            } else {
-                $iPart->execute([$sid, $jid, $m['capitalResourcesLooted'] ?? 0, $m['attacks'] ?? 0]);
-            }
-            $detalle++;
-        }
-    }
-    return "$semanas semanas nuevas, $detalle participaciones";
+paso('guerras', function (): string {
+    $r = cocImportarGuerras(50);
+    return sprintf('%d nuevas de %d en el registro', $r['nuevas'], $r['total']);
 });
 
-// ── 5. CWL, solo si hay temporada ─────────────────────────────
-paso('cwl', function () use ($db): string {
-    $miTag = cocNormalizarTag(COC_CLAN_TAG);
+paso('capital', function (): string {
+    $r = cocImportarCapital(10);
+    return sprintf('%d semanas nuevas, %d participaciones', $r['semanas'], $r['participaciones']);
+});
+
+paso('cwl', function (): string {
     try {
-        $g = cocGet('/clans/' . rawurlencode($miTag) . '/currentwar/leaguegroup');
+        $r = cocImportarCwl();
     } catch (CocApiException $e) {
         return 'sin temporada activa';
     }
-
-    $mes = substr((string) ($g['season'] ?? ''), 0, 7);
-    if ($mes === '') {
-        return 'sin temporada';
-    }
-
-    $agg = [];
-    foreach ($g['rounds'] ?? [] as $r) {
-        foreach ($r['warTags'] ?? [] as $wt) {
-            if ($wt === '#0') {
-                continue;
-            }
-            try {
-                $w = cocGet('/clanwarleagues/wars/' . rawurlencode($wt));
-            } catch (Throwable $e) {
-                continue;
-            }
-            $lado = (($w['clan']['tag'] ?? '') === $miTag) ? $w['clan']
-                  : ((($w['opponent']['tag'] ?? '') === $miTag) ? $w['opponent'] : null);
-            if (!$lado) {
-                continue;
-            }
-            foreach ($lado['members'] ?? [] as $m) {
-                $agg[$m['tag']] ??= ['name' => $m['name'], 'est' => 0, 'pct' => 0.0, 'atq' => 0];
-                foreach ($m['attacks'] ?? [] as $a) {
-                    $agg[$m['tag']]['est'] += (int) $a['stars'];
-                    $agg[$m['tag']]['pct'] += (float) $a['destructionPercentage'];
-                    $agg[$m['tag']]['atq']++;
-                }
-            }
-        }
-    }
-    if (!$agg) {
-        return "temporada $mes sin datos aún";
-    }
-
-    $tid = $db->query("SELECT id FROM cwl_temporadas WHERE mes = " . $db->quote($mes))->fetchColumn();
-    if (!$tid) {
-        $db->prepare('INSERT INTO cwl_temporadas (mes, tamano) VALUES (?, ?)')->execute([$mes, count($agg)]);
-        $tid = (int) $db->lastInsertId();
-    }
-
-    $porTag = $porNombre = [];
-    foreach ($db->query('SELECT id, tag, usuario FROM jugadores') as $r) {
-        if (!empty($r['tag'])) {
-            $porTag[$r['tag']] = (int) $r['id'];
-        }
-        $porNombre[cocEsqueleto(ltrim((string) $r['usuario'], '#'))] = (int) $r['id'];
-    }
-
-    $ins = $db->prepare(
-        'INSERT INTO cwl_participaciones (temporada_id, jugador_id, dia, participo, estrellas, porcentaje, ataques, bonus)
-         VALUES (?,?,1,?,?,?,?,0)
-         ON DUPLICATE KEY UPDATE participo=VALUES(participo), estrellas=VALUES(estrellas),
-            porcentaje=VALUES(porcentaje), ataques=VALUES(ataques)'
-    );
-    $n = 0;
-    foreach ($agg as $t => $a) {
-        $jid = $porTag[$t] ?? $porNombre[cocEsqueleto($a['name'])] ?? null;
-        if (!$jid) {
-            continue;
-        }
-        $ins->execute([$tid, $jid, $a['atq'] > 0 ? 1 : 0, $a['est'], round($a['pct'], 2), $a['atq']]);
-        $n++;
-    }
-    return "temporada $mes, $n jugadores";
+    return $r['mes'] === '' ? 'sin temporada' : sprintf('temporada %s, %d jugadores', $r['mes'], $r['jugadores']);
 });
 
-// ── Bitácora ──────────────────────────────────────────────────
 $estado = $errores ? (count($errores) >= 4 ? 'error' : 'parcial') : 'ok';
 $db->prepare('INSERT INTO cron_ejecuciones (tarea, inicio, fin, estado, detalle) VALUES (?,?,NOW(),?,?)')
    ->execute(['snapshot', $inicio, $estado, implode(' | ', $errores ?: $resumen)]);

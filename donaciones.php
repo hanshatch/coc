@@ -1,139 +1,96 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Donaciones. Derivadas de las capturas diarias, no de captura manual.
+ *
+ * La API solo entrega el acumulado de la temporada en curso, que se
+ * reinicia cada mes. El histórico se construye con lo que el cron va
+ * guardando día a día.
+ */
+
 require_once __DIR__ . '/includes/auth.php';
 requireLogin();
 
-$db     = getDB();
-$action = $_GET['action'] ?? 'list';
+$db = getDB();
 
-if (isDeleteRequest()) {
-    verifyCsrf();
-    $deleteId = (int) ($_POST['id'] ?? 0);
-    $db->prepare('DELETE FROM donaciones_periodos WHERE id = ?')->execute([$deleteId]);
-    logActivity('eliminar', 'donaciones_periodos', $deleteId);
-    setFlash('success', 'Periodo eliminado.');
-    header('Location: donaciones'); exit;
+$ultima = $db->query('SELECT MAX(fecha) FROM snapshots_jugador')->fetchColumn();
+
+$filas = [];
+if ($ultima) {
+    $stmt = $db->prepare(
+        'SELECT j.nombre_juego, j.tag, j.activo, s.donaciones, s.donaciones_recibidas, s.acum_donaciones
+           FROM snapshots_jugador s
+           JOIN jugadores j ON j.id = s.jugador_id
+          WHERE s.fecha = ?
+          ORDER BY s.donaciones DESC'
+    );
+    $stmt->execute([$ultima]);
+    $filas = $stmt->fetchAll();
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    verifyCsrf();
-    $id           = (int) ($_POST['id'] ?? 0);
-    $fecha_inicio = $_POST['fecha_inicio'] ?? '';
-    $fecha_fin    = $_POST['fecha_fin'] ?? '';
-    $tipo         = $_POST['tipo'] ?? 'semanal';
-    $notas        = trim($_POST['notas'] ?? '') ?: null;
-
-    if ($fecha_inicio === '' || $fecha_fin === '') {
-        setFlash('error', 'Las fechas son obligatorias.');
-        header('Location: donaciones?action=' . ($id ? 'edit&id=' . $id : 'create')); exit;
-    }
-
-    if ($id > 0) {
-        $db->prepare('UPDATE donaciones_periodos SET fecha_inicio=?, fecha_fin=?, tipo=?, notas=? WHERE id=?')
-           ->execute([$fecha_inicio, $fecha_fin, $tipo, $notas, $id]);
-        logActivity('editar', 'donaciones_periodos', $id);
-        setFlash('success', 'Periodo actualizado.');
-    } else {
-        $db->prepare('INSERT INTO donaciones_periodos (fecha_inicio, fecha_fin, tipo, notas) VALUES (?, ?, ?, ?)')
-           ->execute([$fecha_inicio, $fecha_fin, $tipo, $notas]);
-        logActivity('crear', 'donaciones_periodos', (int) $db->lastInsertId());
-        setFlash('success', 'Periodo creado.');
-    }
-    header('Location: donaciones'); exit;
-}
-
-if ($action === 'create' || $action === 'edit') {
-    $periodo = null;
-    if ($action === 'edit' && isset($_GET['id'])) {
-        $stmt = $db->prepare('SELECT * FROM donaciones_periodos WHERE id = ?');
-        $stmt->execute([(int) $_GET['id']]);
-        $periodo = $stmt->fetch();
-        if (!$periodo) { setFlash('error', 'No encontrado.'); header('Location: donaciones'); exit; }
-        $pageTitle = 'Editar Periodo';
-    } else {
-        $pageTitle = 'Nuevo Periodo de Donaciones';
-    }
-    require __DIR__ . '/includes/header.php';
-    ?>
-    <div class="ct-page-header">
-        <h1><i class="bi bi-gift-fill"></i> <?= clean($pageTitle) ?></h1>
-        <a href="donaciones" class="btn btn-secondary btn-sm"><i class="bi bi-arrow-left"></i> Volver</a>
-    </div>
-    <div class="card"><div class="card-body">
-        <form method="POST">
-            <?= csrfField() ?>
-            <input type="hidden" name="id" value="<?= $periodo['id'] ?? 0 ?>">
-            <div class="row g-3">
-                <div class="col-md-4">
-                    <label for="fecha_inicio" class="form-label">Fecha Inicio</label>
-                    <input type="date" name="fecha_inicio" id="fecha_inicio" class="form-control"
-                           value="<?= clean($periodo['fecha_inicio'] ?? date('Y-m-d')) ?>" required>
-                </div>
-                <div class="col-md-4">
-                    <label for="fecha_fin" class="form-label">Fecha Fin</label>
-                    <input type="date" name="fecha_fin" id="fecha_fin" class="form-control"
-                           value="<?= clean($periodo['fecha_fin'] ?? '') ?>" required>
-                </div>
-                <div class="col-md-4">
-                    <label for="tipo" class="form-label">Tipo</label>
-                    <select name="tipo" id="tipo" class="form-select">
-                        <option value="semanal" <?= ($periodo['tipo'] ?? 'semanal') === 'semanal' ? 'selected' : '' ?>>Semanal</option>
-                        <option value="mensual" <?= ($periodo['tipo'] ?? '') === 'mensual' ? 'selected' : '' ?>>Mensual</option>
-                    </select>
-                </div>
-                <div class="col-12">
-                    <label for="notas" class="form-label">Notas</label>
-                    <textarea name="notas" id="notas" class="form-control" rows="2"><?= clean($periodo['notas'] ?? '') ?></textarea>
-                </div>
-            </div>
-            <div class="mt-4">
-                <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Guardar</button>
-                <a href="donaciones" class="btn btn-secondary ms-2">Cancelar</a>
-            </div>
-        </form>
-    </div></div>
-    <?php require __DIR__ . '/includes/footer.php'; exit;
-}
-
-// ── LISTADO ───────────────────────────────────────────────────
-$periodos = $db->query(
-    'SELECT dp.*,
-            (SELECT COALESCE(SUM(tropas_donadas),0) FROM donaciones WHERE periodo_id = dp.id) AS total_donadas,
-            (SELECT COUNT(*) FROM donaciones WHERE periodo_id = dp.id) AS participantes
-     FROM donaciones_periodos dp ORDER BY dp.fecha_inicio DESC'
-)->fetchAll();
+$totalDadas    = array_sum(array_column($filas, 'donaciones'));
+$totalRecibidas = array_sum(array_column($filas, 'donaciones_recibidas'));
+$dias = (int) $db->query('SELECT COUNT(DISTINCT fecha) FROM snapshots_jugador')->fetchColumn();
 
 $pageTitle = 'Donaciones';
 require __DIR__ . '/includes/header.php';
 ?>
+
 <div class="ct-page-header">
     <h1><i class="bi bi-gift-fill"></i> Donaciones</h1>
-    <a href="donaciones?action=create" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg"></i> Nuevo Periodo</a>
+    <span class="text-muted" style="font-size:.85rem">
+        <?= $ultima ? 'Lectura del ' . date('d/m/Y', strtotime((string) $ultima)) : 'Sin lecturas' ?>
+    </span>
 </div>
 
-<?php if (empty($periodos)): ?>
-    <div class="empty-state"><div class="empty-icon">🎁</div><p>No hay periodos de donaciones.</p></div>
+<?php if (!$filas): ?>
+    <div class="empty-state">
+        <div class="empty-icon">🎁</div>
+        <p>Sin lecturas todavía. La captura diaria las irá guardando.</p>
+    </div>
 <?php else: ?>
-    <div class="card"><div class="table-responsive">
-        <table class="table table-hover mb-0">
-            <thead><tr><th>Periodo</th><th>Tipo</th><th class="text-center">Total Donadas</th><th class="text-center">Participantes</th><th class="text-end">Acciones</th></tr></thead>
-            <tbody>
-                <?php foreach ($periodos as $p): ?>
-                <tr>
-                    <td><?= date('d/m', strtotime($p['fecha_inicio'])) ?> — <?= date('d/m/Y', strtotime($p['fecha_fin'])) ?></td>
-                    <td><span class="badge <?= $p['tipo'] === 'semanal' ? 'badge-blue' : 'badge-purple' ?>"><?= ucfirst($p['tipo']) ?></span></td>
-                    <td class="text-center"><strong><?= number_format((int) $p['total_donadas']) ?></strong></td>
-                    <td class="text-center"><?= (int) $p['participantes'] ?></td>
-                    <td class="text-end">
-                        <a href="donaciones_detalle?id=<?= $p['id'] ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a>
-                        <a href="donaciones?action=edit&id=<?= $p['id'] ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
-                        <?= deleteButton('donaciones', ['id' => $p['id']], '¿Eliminar este periodo?') ?>
-                    </td>
-                </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
-    </div></div>
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon">📤</div><div class="stat-value"><?= number_format((int) $totalDadas) ?></div><div class="stat-label">Donadas</div></div></div>
+    <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon">📥</div><div class="stat-value"><?= number_format((int) $totalRecibidas) ?></div><div class="stat-label">Recibidas</div></div></div>
+    <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon">⚖️</div><div class="stat-value"><?= $totalRecibidas ? round($totalDadas / $totalRecibidas, 2) : '—' ?></div><div class="stat-label">Ratio del clan</div></div></div>
+    <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon">📅</div><div class="stat-value"><?= $dias ?></div><div class="stat-label">Días capturados</div></div></div>
+</div>
+
+<div class="card"><div class="table-responsive">
+    <table class="table table-hover mb-0">
+        <thead><tr>
+            <th class="text-center">#</th><th>Jugador</th>
+            <th class="text-center">Donadas</th><th class="text-center">Recibidas</th>
+            <th class="text-center">Ratio</th><th class="text-center">De por vida</th>
+        </tr></thead>
+        <tbody>
+        <?php foreach ($filas as $i => $f):
+            $rec   = (int) $f['donaciones_recibidas'];
+            $dad   = (int) $f['donaciones'];
+            $ratio = $rec > 0 ? round($dad / $rec, 2) : ($dad > 0 ? null : 0);
+        ?>
+            <tr>
+                <td class="text-center text-muted"><?= $i + 1 ?></td>
+                <td><strong class="text-white"><?= clean($f['nombre_juego']) ?></strong></td>
+                <td class="text-center text-success"><strong><?= number_format($dad) ?></strong></td>
+                <td class="text-center text-danger"><?= number_format($rec) ?></td>
+                <td class="text-center">
+                    <?php if ($ratio === null): ?>
+                        <span class="badge badge-green">∞</span>
+                    <?php else: ?>
+                        <span class="badge <?= $ratio >= 1 ? 'badge-green' : ($ratio >= 0.5 ? 'badge-gold' : 'badge-red') ?>"><?= $ratio ?></span>
+                    <?php endif; ?>
+                </td>
+                <td class="text-center text-muted"><?= $f['acum_donaciones'] !== null ? number_format((int) $f['acum_donaciones']) : '—' ?></td>
+            </tr>
+        <?php endforeach; ?>
+        </tbody>
+    </table>
+</div></div>
+<div class="text-muted text-center mt-3" style="font-size:.85rem">
+    Las cifras de la temporada se reinician cada mes. La columna de por vida no.
+</div>
 <?php endif; ?>
+
 <?php require __DIR__ . '/includes/footer.php'; ?>

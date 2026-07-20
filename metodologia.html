@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>02 Metodología</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  :root {
+    --bg: #1a1a1a;
+    --green: #8BC53F;
+    --green-bright: #A3D955;
+    --white: #ffffff;
+    --muted: #4a4a4a;
+  }
+
+  body {
+    font-family: 'Montserrat', 'Helvetica Neue', Arial, sans-serif;
+    background-color: var(--bg);
+    color: var(--white);
+    min-height: 100vh;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Subtle grain/noise overlay for premium feel */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.035;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' /%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' /%3E%3C/svg%3E");
+    z-index: 100;
+  }
+
+  .slide {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    padding: 50px 60px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  /* Top bar */
+  .top-bar {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+  }
+
+  .menu-icon {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 7px;
+    cursor: pointer;
+    padding: 6px;
+  }
+
+  .menu-icon span {
+    display: block;
+    height: 3px;
+    background-color: #8a8a8a;
+    transition: background-color 0.3s ease, width 0.3s ease;
+  }
+
+  .menu-icon span:first-child { width: 36px; }
+  .menu-icon span:last-child  { width: 22px; }
+
+  .menu-icon:hover span { background-color: #c4c4c4; }
+
+  /* Vertical line on the left */
+  .vertical-line {
+    position: absolute;
+    left: 60px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 1px;
+    height: 32%;
+    background: linear-gradient(180deg, transparent 0%, var(--muted) 20%, var(--muted) 80%, transparent 100%);
+  }
+
+  /* Main content - centered title */
+  .content {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    flex: 1;
+    padding-right: 90px;
+  }
+
+  .title-wrapper {
+    display: flex;
+    align-items: baseline;
+    gap: 28px;
+    position: relative;
+    animation: fadeInUp 1s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Number block with single green bar */
+  .number-container {
+    position: relative;
+    display: inline-flex;
+    align-items: baseline;
+    padding-left: 90px; /* room for the green bar extending to the left */
+  }
+
+  /* Single solid green bar behind the "02" */
+  .green-bar {
+    position: absolute;
+    left: 0;
+    bottom: 10px;
+    width: 260px;
+    height: 38px;
+    background-color: var(--green);
+    z-index: 1;
+    transform-origin: left center;
+    animation: drawBar 0.9s 0.25s cubic-bezier(0.65, 0, 0.35, 1) both;
+    box-shadow: 0 0 40px rgba(139, 197, 63, 0.12);
+  }
+
+  @keyframes drawBar {
+    from { transform: scaleX(0); }
+    to { transform: scaleX(1); }
+  }
+
+  .number {
+    position: relative;
+    font-size: 128px;
+    font-weight: 800;
+    color: var(--white);
+    z-index: 2;
+    line-height: 0.9;
+    letter-spacing: -4px;
+    font-feature-settings: "tnum" 1;
+  }
+
+  .title {
+    font-size: 100px;
+    font-weight: 400;
+    color: transparent;
+    -webkit-text-stroke: 1.2px var(--white);
+    line-height: 0.9;
+    letter-spacing: -2px;
+    font-family: 'Montserrat', sans-serif;
+    position: relative;
+  }
+
+  /* Subtle highlight reveal on the stroked title */
+  .title::after {
+    content: "metodología";
+    position: absolute;
+    inset: 0;
+    color: transparent;
+    -webkit-text-stroke: 1.2px rgba(255, 255, 255, 0.3);
+    filter: blur(8px);
+    z-index: -1;
+  }
+
+  /* Bottom bar */
+  .bottom-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+
+  .footer-text {
+    font-size: 11px;
+    color: var(--white);
+    font-weight: 400;
+    letter-spacing: 0.3px;
+  }
+
+  .footer-text .brand {
+    font-weight: 700;
+  }
+
+  .nav-arrows {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+  }
+
+  .triangle {
+    width: 0;
+    height: 0;
+    border-top: 11px solid transparent;
+    border-bottom: 11px solid transparent;
+  }
+
+  .triangle-left {
+    border-right: 16px solid #d4d4d4;
+  }
+
+  .triangle-right {
+    border-left: 16px solid var(--green);
+  }
+
+  @media (max-width: 900px) {
+    .slide { padding: 30px 30px; }
+    .content { padding-right: 20px; }
+    .number { font-size: 72px; letter-spacing: -2px; }
+    .title { font-size: 56px; letter-spacing: -1px; }
+    .green-bar { width: 150px; height: 22px; bottom: 6px; }
+    .number-container { padding-left: 50px; }
+    .title-wrapper { gap: 16px; }
+  }
+</style>
+</head>
+<body>
+  <div class="slide">
+    <!-- Top bar with menu -->
+    <div class="top-bar">
+      <div class="menu-icon" aria-label="menu">
+        <span></span>
+        <span></span>
+      </div>
+    </div>
+
+    <!-- Vertical decorative line -->
+    <div class="vertical-line"></div>
+
+    <!-- Main content -->
+    <div class="content">
+      <div class="title-wrapper">
+        <div class="number-container">
+          <div class="green-bar"></div>
+          <span class="number">02</span>
+        </div>
+        <span class="title">metodología</span>
+      </div>
+    </div>
+
+    <!-- Bottom bar -->
+    <div class="bottom-bar">
+      <div class="footer-text">
+        <span class="brand">hatch co.</span> – marketing agency
+      </div>
+      <div class="nav-arrows" aria-hidden="true">
+        <div class="triangle triangle-left"></div>
+        <div class="triangle triangle-right"></div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,216 +1,147 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Dashboard. Estado del clan según la última captura.
+ */
+
 require_once __DIR__ . '/includes/auth.php';
 requireLogin();
 
 $db = getDB();
 
-// ── Estadísticas rápidas ──────────────────────────────────────
-$totalJugadores = (int) $db->query('SELECT COUNT(*) FROM jugadores WHERE activo = 1')->fetchColumn();
-$totalGuerras   = (int) $db->query('SELECT COUNT(*) FROM guerras')->fetchColumn();
-$victorias      = (int) $db->query('SELECT COUNT(*) FROM guerras WHERE resultado = "victoria"')->fetchColumn();
-$winRate        = $totalGuerras > 0 ? round(($victorias / $totalGuerras) * 100) : 0;
+$clan    = $db->query('SELECT * FROM snapshots_clan ORDER BY fecha DESC LIMIT 1')->fetch();
+$lectura = $db->query('SELECT MAX(fecha) FROM snapshots_jugador')->fetchColumn();
+$activos = (int) $db->query('SELECT COUNT(*) FROM jugadores WHERE activo = 1')->fetchColumn();
 
-// ── Última guerra ─────────────────────────────────────────────
-$ultimaGuerra = $db->query(
-    'SELECT g.*, (SELECT COUNT(*) FROM guerra_participaciones WHERE guerra_id = g.id) AS participantes
-     FROM guerras g ORDER BY g.fecha DESC LIMIT 1'
+$guerras = $db->query(
+    "SELECT COUNT(*) total, SUM(resultado='victoria') ganadas FROM guerras"
 )->fetch();
 
-// ── Últimos juegos del clan ───────────────────────────────────
-$ultimosJuegos = $db->query(
-    'SELECT jc.*,
-            (SELECT COALESCE(SUM(puntos),0) FROM juegos_participaciones WHERE juego_id = jc.id) AS puntos_sum,
-            (SELECT COUNT(*) FROM juegos_participaciones WHERE juego_id = jc.id) AS participantes
-     FROM juegos_clan jc ORDER BY jc.fecha_inicio DESC LIMIT 1'
+$capital = $db->query('SELECT * FROM capital_semanas ORDER BY fecha_inicio DESC LIMIT 1')->fetch();
+
+$cwl = $db->query(
+    'SELECT t.mes, COUNT(p.id) jugadores, SUM(p.estrellas) estrellas, SUM(p.ataques) ataques
+       FROM cwl_temporadas t
+       JOIN cwl_participaciones p ON p.temporada_id = t.id
+   GROUP BY t.id ORDER BY t.mes DESC LIMIT 1'
 )->fetch();
 
-// ── Top donadores (último periodo) ───────────────────────────
-$ultimoPeriodo = $db->query('SELECT id FROM donaciones_periodos ORDER BY fecha_inicio DESC LIMIT 1')->fetchColumn();
-$donadores = [];
-if ($ultimoPeriodo) {
-    $donadores = $db->prepare(
-        'SELECT d.*, j.usuario, j.rol_clan FROM donaciones d
-         JOIN jugadores j ON d.jugador_id = j.id
-         WHERE d.periodo_id = ? ORDER BY d.tropas_donadas DESC LIMIT 5'
-    );
-    $donadores->execute([$ultimoPeriodo]);
-    $donadores = $donadores->fetchAll();
+// Los que no atacaron en la última CWL: la señal más accionable.
+$flojos = [];
+if ($cwl) {
+    $flojos = $db->query(
+        "SELECT j.nombre_juego, p.ataques, p.estrellas
+           FROM cwl_participaciones p
+           JOIN jugadores j ON j.id = p.jugador_id
+           JOIN cwl_temporadas t ON t.id = p.temporada_id
+          WHERE j.activo = 1 AND p.ataques < 4
+            AND t.mes = " . $db->quote((string) $cwl['mes']) . "
+       ORDER BY p.ataques ASC LIMIT 8"
+    )->fetchAll();
 }
 
-// ── Actividad reciente ────────────────────────────────────────
-$actividad = $db->query(
-    'SELECT l.*, u.nombre AS usuario_nombre
-     FROM log_actividad l
-     JOIN usuarios u ON l.usuario_id = u.id
-     ORDER BY l.created_at DESC LIMIT 8'
-)->fetchAll();
+$ultimoCron = $db->query('SELECT * FROM cron_ejecuciones ORDER BY id DESC LIMIT 1')->fetch();
 
 $pageTitle = 'Dashboard';
 require __DIR__ . '/includes/header.php';
 ?>
 
 <div class="ct-page-header">
-    <h1>⚔️ Dashboard — Clan Tracker</h1>
-    <div class="text-muted"><i class="bi bi-calendar3"></i> <?= date('d/m/Y') ?></div>
+    <h1><i class="bi bi-speedometer2"></i> Dashboard</h1>
+    <span class="text-muted" style="font-size:.85rem">
+        <?= $lectura ? 'Última captura: ' . date('d/m/Y', strtotime((string) $lectura)) : 'Sin capturas' ?>
+    </span>
 </div>
 
-<!-- Stat Cards -->
+<?php if (!$clan): ?>
+    <div class="empty-state">
+        <div class="empty-icon">🏰</div>
+        <p>Sin datos todavía. Corre una sincronización para traer el estado del clan.</p>
+        <a href="sincronizar" class="btn btn-primary btn-sm">Sincronizar ahora</a>
+    </div>
+<?php else: ?>
+
 <div class="row g-3 mb-4">
-    <div class="col-6 col-md-3">
-        <div class="stat-card">
-            <div class="stat-icon">👥</div>
-            <div class="stat-value"><?= $totalJugadores ?></div>
-            <div class="stat-label">Jugadores Activos</div>
-        </div>
-    </div>
-    <div class="col-6 col-md-3">
-        <div class="stat-card">
-            <div class="stat-icon">⚔️</div>
-            <div class="stat-value"><?= $totalGuerras ?></div>
-            <div class="stat-label">Guerras Totales</div>
-        </div>
-    </div>
-    <div class="col-6 col-md-3">
-        <div class="stat-card">
-            <div class="stat-icon">🏆</div>
-            <div class="stat-value"><?= $victorias ?></div>
-            <div class="stat-label">Victorias</div>
-        </div>
-    </div>
-    <div class="col-6 col-md-3">
-        <div class="stat-card">
-            <div class="stat-icon">📈</div>
-            <div class="stat-value"><?= $winRate ?>%</div>
-            <div class="stat-label">Win Rate</div>
-        </div>
-    </div>
+    <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon">👥</div><div class="stat-value"><?= $activos ?>/50</div><div class="stat-label">Miembros</div></div></div>
+    <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon">🏅</div><div class="stat-value"><?= number_format((int) $clan['puntos_clan']) ?></div><div class="stat-label">Puntos del clan</div></div></div>
+    <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon">⚔️</div><div class="stat-value"><?= (int) $clan['guerras_ganadas'] ?></div><div class="stat-label">Guerras ganadas</div></div></div>
+    <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon">🔥</div><div class="stat-value"><?= (int) $clan['racha_victorias'] ?></div><div class="stat-label">Racha actual</div></div></div>
 </div>
 
-<div class="row g-4">
-    <!-- Última Guerra -->
-    <div class="col-lg-7">
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
         <div class="card h-100">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span>Última Guerra</span>
-                <a href="guerras" class="btn btn-sm btn-outline-primary py-0">Ver todas</a>
-            </div>
+            <div class="card-header"><i class="bi bi-trophy-fill"></i> Última CWL</div>
             <div class="card-body">
-                <?php if ($ultimaGuerra):
-                    $resBadge = [
-                        'victoria' => 'badge-green',
-                        'derrota'  => 'badge-red',
-                        'empate'   => 'badge-blue',
-                        'en_curso' => 'badge-gold',
-                    ];
-                ?>
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <div>
-                            <h3 class="mb-0">vs <?= clean($ultimaGuerra['oponente']) ?></h3>
-                            <small class="text-muted"><?= date('d F Y', strtotime($ultimaGuerra['fecha'])) ?></small>
-                        </div>
-                        <span class="badge <?= $resBadge[$ultimaGuerra['resultado']] ?? 'badge-muted' ?> fs-6">
-                            <?= ucfirst(str_replace('_', ' ', $ultimaGuerra['resultado'])) ?>
-                        </span>
-                    </div>
-                    <div class="row text-center my-4">
-                        <div class="col-6 border-end border-secondary">
-                            <div class="h2 mb-0"><?= (int) $ultimaGuerra['estrellas_clan'] ?></div>
-                            <div class="text-muted small">Clan</div>
-                        </div>
-                        <div class="col-6">
-                            <div class="h2 mb-0"><?= (int) $ultimaGuerra['estrellas_oponente'] ?></div>
-                            <div class="text-muted small">Oponente</div>
-                        </div>
-                    </div>
-                    <div class="text-center">
-                        <p class="mb-0 small text-muted"><?= (int) $ultimaGuerra['participantes'] ?> jugadores registrados</p>
-                        <a href="guerra_detalle?id=<?= $ultimaGuerra['id'] ?>" class="btn btn-sm btn-primary mt-2">Detalles</a>
-                    </div>
+                <?php if ($cwl): ?>
+                    <h4 class="text-white mb-1"><?= clean((string) $cwl['mes']) ?></h4>
+                    <p class="mb-1"><?= (int) $cwl['estrellas'] ?> estrellas con <?= (int) $cwl['ataques'] ?> ataques</p>
+                    <p class="text-muted mb-0" style="font-size:.85rem">
+                        <?= (int) $cwl['jugadores'] ?> jugadores ·
+                        <?= (int) $cwl['ataques'] ? round((int) $cwl['estrellas'] / (int) $cwl['ataques'], 2) : 0 ?> estrellas por ataque
+                    </p>
                 <?php else: ?>
-                    <div class="text-center py-4 text-muted">No hay guerras registradas.</div>
+                    <p class="text-muted mb-0">Sin temporadas registradas.</p>
                 <?php endif; ?>
             </div>
         </div>
     </div>
-
-    <!-- Top Donadores -->
-    <div class="col-lg-5">
+    <div class="col-md-4">
         <div class="card h-100">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span>Top Donadores</span>
-                <a href="donaciones" class="btn btn-sm btn-outline-primary py-0">Donaciones</a>
-            </div>
-            <div class="card-body p-0">
-                <?php if (empty($donadores)): ?>
-                    <div class="text-center py-4 text-muted">No hay donaciones en el periodo actual.</div>
+            <div class="card-header"><i class="bi bi-building-fill"></i> Último capital</div>
+            <div class="card-body">
+                <?php if ($capital): ?>
+                    <h4 class="text-white mb-1"><?= number_format((int) $capital['oro_total_recaudado']) ?></h4>
+                    <p class="mb-1"><?= (int) $capital['distritos_destruidos'] ?> distritos, <?= (int) $capital['ataques_totales'] ?> ataques</p>
+                    <p class="text-muted mb-0" style="font-size:.85rem"><?= date('d/m/Y', strtotime($capital['fecha_inicio'])) ?></p>
                 <?php else: ?>
-                    <table class="table table-sm table-hover mb-0">
-                        <thead class="bg-surface2">
-                            <tr>
-                                <th class="ps-3 py-2">Jugador</th>
-                                <th class="text-end pe-3 py-2">Donadas</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($donadores as $d): ?>
-                                <tr>
-                                    <td class="ps-3 py-2">
-                                        <div class="fw-bold">
-                                            <?= clean($d['usuario']) ?>
-                                            <small class="text-muted fw-normal opacity-50 ms-1" style="font-size: 0.65rem;">(<?= strtoupper($d['rol_clan']) ?>)</small>
-                                        </div>
-                                    </td>
-                                    <td class="text-end pe-3 py-2 text-gold font-monospace"><?= number_format((int) $d['tropas_donadas']) ?></td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
+                    <p class="text-muted mb-0">Sin fines de semana registrados.</p>
                 <?php endif; ?>
             </div>
         </div>
     </div>
-
-    <!-- Actividad Reciente -->
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header">Actividad Reciente del Sistema</div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-sm table-hover mb-0" style="font-size:0.85rem">
-                        <thead>
-                            <tr>
-                                <th class="ps-3">Usuario</th>
-                                <th>Acción</th>
-                                <th>Sección</th>
-                                <th>Detalle</th>
-                                <th class="text-end pe-3">Fecha</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($actividad as $l):
-                                $badgeClass = match($l['accion']) {
-                                    'crear'    => 'badge-green',
-                                    'editar'   => 'badge-blue',
-                                    'eliminar' => 'badge-red',
-                                    default    => 'badge-muted'
-                                };
-                            ?>
-                                <tr>
-                                    <td class="ps-3"><?= clean($l['usuario_nombre']) ?></td>
-                                    <td><span class="badge <?= $badgeClass ?>"><?= $l['accion'] ?></span></td>
-                                    <td><?= ucfirst($l['tabla_afectada']) ?></td>
-                                    <td><?= clean($l['detalle']) ?></td>
-                                    <td class="text-end pe-3 text-muted"><?= date('d/m H:i', strtotime($l['created_at'])) ?></td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-header"><i class="bi bi-lightning-fill"></i> Guerras</div>
+            <div class="card-body">
+                <h4 class="text-white mb-1"><?= (int) $guerras['total'] ?> registradas</h4>
+                <p class="mb-1"><?= (int) $guerras['ganadas'] ?> ganadas</p>
+                <p class="text-muted mb-0" style="font-size:.85rem">
+                    Histórico del clan: <?= (int) $clan['guerras_ganadas'] ?>–<?= (int) $clan['guerras_perdidas'] ?>–<?= (int) $clan['guerras_empatadas'] ?>
+                </p>
             </div>
         </div>
     </div>
 </div>
 
+<?php if ($flojos): ?>
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-exclamation-triangle-fill text-warning"></i> Poca participación en la última CWL</span>
+        <a href="reportes" class="btn btn-sm btn-outline-primary">Ver decisiones</a>
+    </div>
+    <div class="table-responsive"><table class="table table-hover mb-0">
+        <thead><tr><th>Jugador</th><th class="text-center">Ataques</th><th class="text-center">Estrellas</th></tr></thead>
+        <tbody>
+        <?php foreach ($flojos as $f): ?>
+            <tr>
+                <td><strong class="text-white"><?= clean($f['nombre_juego']) ?></strong></td>
+                <td class="text-center"><span class="badge <?= (int) $f['ataques'] === 0 ? 'badge-red' : 'badge-gold' ?>"><?= (int) $f['ataques'] ?>/7</span></td>
+                <td class="text-center"><?= (int) $f['estrellas'] ?></td>
+            </tr>
+        <?php endforeach; ?>
+        </tbody>
+    </table></div>
+</div>
+<?php endif; ?>
+
+<?php if ($ultimoCron): ?>
+<div class="text-muted" style="font-size:.8rem">
+    Última captura automática: <?= date('d/m/Y H:i', strtotime($ultimoCron['inicio'])) ?>
+    — <span class="badge <?= $ultimoCron['estado'] === 'ok' ? 'badge-green' : ($ultimoCron['estado'] === 'parcial' ? 'badge-gold' : 'badge-red') ?>"><?= clean($ultimoCron['estado']) ?></span>
+</div>
+<?php endif; ?>
+
+<?php endif; ?>
 <?php require __DIR__ . '/includes/footer.php'; ?>

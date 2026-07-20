@@ -65,7 +65,7 @@ require __DIR__ . '/includes/header.php';
                 <label class="form-label mb-0 small">Sección</label>
                 <select name="t" class="form-select form-select-sm">
                     <option value="">— Todas —</option>
-                    <?php foreach (['jugadores','guerras','cwl_temporadas','juegos_clan','donaciones_periodos','capital_semanas','usuarios'] as $tab): ?>
+                    <?php foreach (['jugadores','guerras','cwl_temporadas','cwl_participaciones','capital_semanas','usuarios'] as $tab): ?>
                         <option value="<?= $tab ?>" <?= $tableFilter === $tab ? 'selected' : '' ?>><?= ucfirst($tab) ?></option>
                     <?php endforeach; ?>
                 </select>
