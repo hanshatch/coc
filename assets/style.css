@@ -324,6 +324,27 @@ a:hover { color: var(--ct-gold-hover); text-decoration: none; }
 .text-warning { color: var(--ct-gold-text)  !important; }
 .text-info    { color: var(--ct-blue-text)  !important; }
 
+/* .text-muted era el peor caso de todos y el más usado de la interfaz.
+   Bootstrap lo resuelve como rgba(33, 37, 41, .75), un gris carbón
+   calculado para fondo blanco: sobre este fondo daba 1.02:1, o sea
+   exactamente el color del fondo. Los textos secundarios existían en
+   el HTML pero no se veían.
+
+   La raíz era que la página nunca declaró ser tema oscuro, así que
+   todas las utilidades de Bootstrap resolvían con valores para fondo
+   claro. Eso se corrige con data-bs-theme="dark" en el <html>; estas
+   variables además fijan los tonos a los del tema propio en lugar de
+   los grises genéricos de Bootstrap. */
+:root {
+    --bs-body-color:      #d1d5db;
+    --bs-body-color-rgb:  209, 213, 219;
+    --bs-secondary-color: rgba(209, 213, 219, 0.70);
+    --bs-tertiary-color:  rgba(209, 213, 219, 0.50);
+    --bs-emphasis-color:  #ffffff;
+}
+.text-muted,
+.text-body-secondary { color: var(--ct-text-muted) !important; }
+
 /* Pagination */
 .page-link {
     background: var(--ct-surface);

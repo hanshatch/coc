@@ -15,7 +15,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
 $currentName = str_replace('.php', '', $currentPage);
 ?>
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-bs-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -30,7 +30,7 @@ $currentName = str_replace('.php', '', $currentPage);
           integrity="sha384-XGjxtQfXaH2tnPFa9x+ruJTuLE3Aa6LhHSWRr1XeTyhezb4abCG4ccI5AkVDxqC+"
           crossorigin="anonymous">
     <!-- Custom Theme -->
-    <link href="assets/style.css?v=5.0" rel="stylesheet">
+    <link href="assets/style.css?v=6.0" rel="stylesheet">
 </head>
 <body>
 
