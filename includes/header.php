@@ -51,7 +51,7 @@ $currentName = str_replace('.php', '', $currentPage);
 
     <nav class="ct-sidebar-nav">
         <a href="index" class="nav-link <?= $currentName === 'index' ? 'active' : '' ?>">
-            <span class="nav-icon"><i class="bi bi-speedometer2"></i></span> Dashboard
+            <span class="nav-icon"><i class="bi bi-clipboard-data-fill"></i></span> Decisiones
         </a>
         <a href="jugadores" class="nav-link <?= $currentName === 'jugadores' ? 'active' : '' ?>">
             <span class="nav-icon"><i class="bi bi-people-fill"></i></span> Jugadores
@@ -71,8 +71,8 @@ $currentName = str_replace('.php', '', $currentPage);
         <a href="capital" class="nav-link <?= $currentName === 'capital' || $currentName === 'capital_detalle' ? 'active' : '' ?>">
             <span class="nav-icon"><i class="bi bi-building-fill"></i></span> Capital de Clan
         </a>
-        <a href="reportes" class="nav-link <?= $currentName === 'reportes' ? 'active' : '' ?>">
-            <span class="nav-icon"><i class="bi bi-clipboard-data-fill"></i></span> Decisiones
+        <a href="estadisticas" class="nav-link <?= $currentName === 'estadisticas' ? 'active' : '' ?>">
+            <span class="nav-icon"><i class="bi bi-graph-up"></i></span> Estadísticas
         </a>
 
         <?php if ($user && $user['rol'] === 'admin'): ?>
