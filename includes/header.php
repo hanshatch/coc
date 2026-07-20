@@ -56,6 +56,9 @@ $currentName = str_replace('.php', '', $currentPage);
         <a href="jugadores" class="nav-link <?= $currentName === 'jugadores' ? 'active' : '' ?>">
             <span class="nav-icon"><i class="bi bi-people-fill"></i></span> Jugadores
         </a>
+        <a href="sincronizar" class="nav-link <?= $currentName === 'sincronizar' ? 'active' : '' ?>">
+            <span class="nav-icon"><i class="bi bi-arrow-repeat"></i></span> Sincronizar Clan
+        </a>
         <a href="guerras" class="nav-link <?= $currentName === 'guerras' || $currentName === 'guerra_detalle' ? 'active' : '' ?>">
             <span class="nav-icon"><i class="bi bi-lightning-fill"></i></span> Guerras
         </a>
