@@ -1,20 +1,10 @@
 {
   "version": 1,
   "skills": {
-    "n8n-workflow-patterns": {
-      "source": "czlonkowski/n8n-skills",
-      "sourceType": "github",
-      "computedHash": "49f2640d03fe805fd07dbafbcfb0a3664230b97b90a220a6b8c8504cf55f211d"
-    },
     "php-pro": {
       "source": "jeffallan/claude-skills",
       "sourceType": "github",
       "computedHash": "455d56996d27abb1031058e8822ccef172d4c3195bbc555f13883b208a9c7e3f"
-    },
-    "ui-ux-designer": {
-      "source": "lotosbin/claude-skills",
-      "sourceType": "github",
-      "computedHash": "42c6f46cc45913d21f55b7c1814bde21b90103cadf7f2f6f80bc001efffa7c86"
     }
   }
 }
