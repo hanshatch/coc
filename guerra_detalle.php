@@ -75,9 +75,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_participation'])
 }
 
 // ── Eliminar jugador de la guerra ─────────────────────────────
-if (isset($_GET['remove']) && isset($_GET['csrf_token'])) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['remove_jugador'])) {
     verifyCsrf();
-    $removeId = (int) $_GET['remove'];
+    $removeId = (int) $_POST['remove_jugador'];
     $db->prepare('DELETE FROM guerra_participaciones WHERE guerra_id=? AND jugador_id=?')
        ->execute([$id, $removeId]);
     logActivity('eliminar', 'guerra_participaciones', $id, 'Jugador removido: ' . $removeId);
@@ -317,6 +317,9 @@ function toggleAllPlayers(checked) {
         </div>
     </div>
 
+    <!-- Formulario aparte: los botones de remover lo invocan vía atributo form= -->
+    <form method="POST" id="removeForm"><?= csrfField() ?></form>
+
     <form method="POST">
         <?= csrfField() ?>
         <input type="hidden" name="save_participation" value="1">
@@ -386,11 +389,12 @@ function toggleAllPlayers(checked) {
                                 </div>
                             </td>
                             <td class="text-end">
-                                <a href="guerra_detalle?id=<?= $id ?>&remove=<?= $p['jugador_id'] ?>&csrf_token=<?= csrfToken() ?>"
-                                   class="btn btn-sm btn-outline-danger" title="Remover"
-                                   data-confirm="¿Remover a <?= clean($p['usuario']) ?> de la guerra?">
+                                <button type="submit" form="removeForm"
+                                        name="remove_jugador" value="<?= (int) $p['jugador_id'] ?>"
+                                        class="btn btn-sm btn-outline-danger" title="Remover"
+                                        data-confirm="¿Remover a <?= clean($p['usuario']) ?> de la guerra?">
                                     <i class="bi bi-x-lg"></i>
-                                </a>
+                                </button>
                             </td>
                         </tr>
                         <?php endforeach; ?>

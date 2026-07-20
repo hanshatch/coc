@@ -17,9 +17,9 @@ try {
 $action = $_GET['action'] ?? 'list';
 
 // ── ELIMINAR ──────────────────────────────────────────────────
-if ($action === 'delete' && isset($_GET['id'])) {
+if (isDeleteRequest()) {
     verifyCsrf();
-    $id   = (int) $_GET['id'];
+    $id   = (int) ($_POST['id'] ?? 0);
     $stmt = $db->prepare('SELECT oponente FROM guerras WHERE id = ?');
     $stmt->execute([$id]);
     $g = $stmt->fetch();
@@ -231,11 +231,7 @@ require __DIR__ . '/includes/header.php';
                                 <a href="guerras?action=edit&id=<?= $g['id'] ?>" class="btn btn-sm btn-outline-primary" title="Editar">
                                     <i class="bi bi-pencil"></i>
                                 </a>
-                                <a href="guerras?action=delete&id=<?= $g['id'] ?>&csrf_token=<?= csrfToken() ?>"
-                                   class="btn btn-sm btn-danger" title="Eliminar"
-                                   data-confirm="¿Eliminar guerra vs <?= clean($g['oponente']) ?>?">
-                                    <i class="bi bi-trash"></i>
-                                </a>
+                                <?= deleteButton('guerras', ['id' => $g['id']], '¿Eliminar guerra vs ' . $g['oponente'] . '?') ?>
                             </td>
                         </tr>
                     <?php endforeach; ?>

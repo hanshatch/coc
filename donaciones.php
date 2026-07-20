@@ -7,10 +7,11 @@ requireLogin();
 $db     = getDB();
 $action = $_GET['action'] ?? 'list';
 
-if ($action === 'delete' && isset($_GET['id'])) {
+if (isDeleteRequest()) {
     verifyCsrf();
-    $db->prepare('DELETE FROM donaciones_periodos WHERE id = ?')->execute([(int) $_GET['id']]);
-    logActivity('eliminar', 'donaciones_periodos', (int) $_GET['id']);
+    $deleteId = (int) ($_POST['id'] ?? 0);
+    $db->prepare('DELETE FROM donaciones_periodos WHERE id = ?')->execute([$deleteId]);
+    logActivity('eliminar', 'donaciones_periodos', $deleteId);
     setFlash('success', 'Periodo eliminado.');
     header('Location: donaciones'); exit;
 }
@@ -127,8 +128,7 @@ require __DIR__ . '/includes/header.php';
                     <td class="text-end">
                         <a href="donaciones_detalle?id=<?= $p['id'] ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a>
                         <a href="donaciones?action=edit&id=<?= $p['id'] ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
-                        <a href="donaciones?action=delete&id=<?= $p['id'] ?>&csrf_token=<?= csrfToken() ?>" class="btn btn-sm btn-danger"
-                           data-confirm="¿Eliminar este periodo?"><i class="bi bi-trash"></i></a>
+                        <?= deleteButton('donaciones', ['id' => $p['id']], '¿Eliminar este periodo?') ?>
                     </td>
                 </tr>
                 <?php endforeach; ?>

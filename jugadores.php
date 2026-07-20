@@ -27,9 +27,9 @@ try {
 $action = $_GET['action'] ?? 'list';
 
 // ── ELIMINAR ──────────────────────────────────────────────────
-if ($action === 'delete' && isset($_GET['id'])) {
+if (isDeleteRequest()) {
     verifyCsrf();
-    $id   = (int) $_GET['id'];
+    $id   = (int) ($_POST['id'] ?? 0);
     $stmt = $db->prepare('SELECT usuario FROM jugadores WHERE id = ?');
     $stmt->execute([$id]);
     $j = $stmt->fetch();
@@ -268,11 +268,11 @@ require __DIR__ . '/includes/header.php';
                                 <a href="jugadores?action=edit&id=<?= $j['id'] ?>" class="btn btn-sm btn-outline-primary" title="Editar">
                                     <i class="bi bi-pencil"></i>
                                 </a>
-                                <a href="jugadores?action=delete&id=<?= $j['id'] ?>&csrf_token=<?= csrfToken() ?>"
-                                   class="btn btn-sm btn-danger" title="Eliminar"
-                                   data-confirm="¿Eliminar a <?= clean($j['usuario']) ?>? Esto borrará todas sus participaciones.">
-                                    <i class="bi bi-trash"></i>
-                                </a>
+                                <?= deleteButton(
+                                    'jugadores',
+                                    ['id' => $j['id']],
+                                    '¿Eliminar a ' . $j['usuario'] . '? Esto borrará todas sus participaciones.'
+                                ) ?>
                             </td>
                         </tr>
                     <?php endforeach; ?>

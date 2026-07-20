@@ -26,6 +26,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_players'])) {
     header('Location: donaciones_detalle?id=' . $id); exit;
 }
 
+// ── Remover jugador del periodo ───────────────────────────────
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['remove_jugador'])) {
+    verifyCsrf();
+    $removeJid = (int) $_POST['remove_jugador'];
+    $db->prepare('DELETE FROM donaciones WHERE periodo_id=? AND jugador_id=?')
+       ->execute([$id, $removeJid]);
+    logActivity('eliminar', 'donaciones', $id, 'Jugador removido del periodo: ' . $removeJid);
+    setFlash('success', 'Jugador removido de este periodo.');
+    header('Location: donaciones_detalle?id=' . $id); exit;
+}
+
 // ── Guardar participaciones ───────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_participation'])) {
     verifyCsrf();
@@ -104,6 +115,9 @@ require __DIR__ . '/includes/header.php';
 <?php if (empty($participaciones)): ?>
     <div class="empty-state"><div class="empty-icon">🎁</div><p>No hay registro de donaciones aún.</p></div>
 <?php else: ?>
+    <!-- Formulario aparte: los botones de remover lo invocan vía atributo form= -->
+    <form method="POST" id="removeForm"><?= csrfField() ?></form>
+
     <form method="POST">
         <?= csrfField() ?><input type="hidden" name="save_participation" value="1">
         <div class="card"><div class="table-responsive">
@@ -120,10 +134,12 @@ require __DIR__ . '/includes/header.php';
                         <td><input type="number" name="tropas_recibidas[<?= $p['jugador_id'] ?>]" class="form-control form-control-sm" min="0" value="<?= (int) $p['tropas_recibidas'] ?>" style="width:100px"></td>
                         <td><span style="color:<?= $ratioColor ?>;font-weight:600"><?= $ratio ?></span></td>
                         <td class="text-end">
-                            <a href="donaciones_detalle?id=<?= $id ?>&remove=<?= $p['jugador_id'] ?>&csrf_token=<?= csrfToken() ?>"
-                               class="btn btn-sm btn-danger py-0 px-1" title="Remover" data-confirm="¿Remover de este periodo?">
+                            <button type="submit" form="removeForm"
+                                    name="remove_jugador" value="<?= (int) $p['jugador_id'] ?>"
+                                    class="btn btn-sm btn-danger py-0 px-1" title="Remover"
+                                    data-confirm="¿Remover de este periodo?">
                                 <i class="bi bi-x"></i>
-                            </a>
+                            </button>
                         </td>
                     </tr>
                     <?php endforeach; ?>

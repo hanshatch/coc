@@ -7,9 +7,9 @@ requireAdmin();
 $db     = getDB();
 $action = $_GET['action'] ?? 'list';
 
-if ($action === 'delete' && isset($_GET['id'])) {
+if (isDeleteRequest()) {
     verifyCsrf();
-    $id = (int) $_GET['id'];
+    $id = (int) ($_POST['id'] ?? 0);
     if ($id === currentUser()['id']) {
         setFlash('error', 'No puedes eliminarte a ti mismo.');
     } else {
@@ -113,7 +113,7 @@ require __DIR__ . '/includes/header.php';
                 <td class="text-end">
                     <a href="usuarios?action=edit&id=<?= $u['id'] ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
                     <?php if ($u['id'] !== currentUser()['id']): ?>
-                        <a href="usuarios?action=delete&id=<?= $u['id'] ?>&csrf_token=<?= csrfToken() ?>" class="btn btn-sm btn-danger" data-confirm="¿Eliminar este usuario?"><i class="bi bi-trash"></i></a>
+                        <?= deleteButton('usuarios', ['id' => $u['id']], '¿Eliminar este usuario?') ?>
                     <?php endif; ?>
                 </td>
             </tr>

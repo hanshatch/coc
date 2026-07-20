@@ -7,10 +7,11 @@ requireLogin();
 $db     = getDB();
 $action = $_GET['action'] ?? 'list';
 
-if ($action === 'delete' && isset($_GET['id'])) {
+if (isDeleteRequest()) {
     verifyCsrf();
-    $db->prepare('DELETE FROM capital_semanas WHERE id = ?')->execute([(int) $_GET['id']]);
-    logActivity('eliminar', 'capital_semanas', (int) $_GET['id']);
+    $deleteId = (int) ($_POST['id'] ?? 0);
+    $db->prepare('DELETE FROM capital_semanas WHERE id = ?')->execute([$deleteId]);
+    logActivity('eliminar', 'capital_semanas', $deleteId);
     setFlash('success', 'Semana de capital eliminada.');
     header('Location: capital'); exit;
 }
@@ -138,8 +139,7 @@ require __DIR__ . '/includes/header.php';
                     <td class="text-end">
                         <a href="capital_detalle?id=<?= $s['id'] ?>" class="btn btn-sm btn-outline-primary" title="Detalle"><i class="bi bi-eye"></i></a>
                         <a href="capital?action=edit&id=<?= $s['id'] ?>" class="btn btn-sm btn-outline-primary" title="Editar"><i class="bi bi-pencil"></i></a>
-                        <a href="capital?action=delete&id=<?= $s['id'] ?>&csrf_token=<?= csrfToken() ?>" class="btn btn-sm btn-danger"
-                           data-confirm="¿Eliminar esta semana de raid?"><i class="bi bi-trash"></i></a>
+                        <?= deleteButton('capital', ['id' => $s['id']], '¿Eliminar esta semana de raid?') ?>
                     </td>
                 </tr>
                 <?php endforeach; ?>

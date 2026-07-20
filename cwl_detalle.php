@@ -78,9 +78,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_participation'])
 }
 
 // ── Remover jugador del roster ────────────────────────────────
-if (isset($_GET['remove'])) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['remove_jugador'])) {
     verifyCsrf();
-    $removeJid = (int) $_GET['remove'];
+    $removeJid = (int) $_POST['remove_jugador'];
     $db->prepare('DELETE FROM cwl_participaciones WHERE temporada_id=? AND jugador_id=?')
        ->execute([$id, $removeJid]);
     logActivity('eliminar', 'cwl_participaciones', $id, 'Jugador removido del roster: ' . $removeJid);
@@ -322,6 +322,9 @@ function toggleAllPlayers(checked) {
         </div>
     </div>
 
+    <!-- Formulario aparte: los botones de remover lo invocan vía atributo form= -->
+    <form method="POST" id="removeForm"><?= csrfField() ?></form>
+
     <form method="POST">
         <?= csrfField() ?><input type="hidden" name="save_participation" value="1">
         <div class="card"><div class="table-responsive">
@@ -347,12 +350,13 @@ function toggleAllPlayers(checked) {
                                         <small class="text-muted fw-normal opacity-50 ms-1" style="font-size: 0.65rem;">(<?= strtoupper($jd['rol_clan'] ?? 'miembro') ?>)</small>
                                     </div>
                                 </div>
-                                <a href="cwl_detalle?id=<?= $id ?>&remove=<?= $jid ?>&csrf_token=<?= csrfToken() ?>" 
-                                   class="btn btn-sm btn-link p-1 text-danger opacity-50 hover-opacity-100" 
-                                   title="Remover del Roster"
-                                   onclick="return confirm('¿Remover a <?= clean($jd['nombre']) ?> de esta temporada?')">
+                                <button type="submit" form="removeForm"
+                                        name="remove_jugador" value="<?= (int) $jid ?>"
+                                        class="btn btn-sm btn-link p-1 text-danger opacity-50 hover-opacity-100"
+                                        title="Remover del Roster"
+                                        data-confirm="¿Remover a <?= clean($jd['nombre']) ?> de esta temporada?">
                                     <i class="bi bi-person-x-fill fs-5"></i>
-                                </a>
+                                </button>
                             </div>
                         </td>
                         <td class="text-center">

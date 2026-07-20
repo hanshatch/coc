@@ -8,9 +8,9 @@ $db     = getDB();
 $action = $_GET['action'] ?? 'list';
 
 // ── ELIMINAR ──────────────────────────────────────────────────
-if ($action === 'delete' && isset($_GET['id'])) {
+if (isDeleteRequest()) {
     verifyCsrf();
-    $id   = (int) $_GET['id'];
+    $id   = (int) ($_POST['id'] ?? 0);
     $stmt = $db->prepare('SELECT mes FROM cwl_temporadas WHERE id = ?');
     $stmt->execute([$id]);
     $t = $stmt->fetch();
@@ -145,8 +145,7 @@ require __DIR__ . '/includes/header.php';
                     <td class="text-end">
                         <a href="cwl_detalle?id=<?= $t['id'] ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a>
                         <a href="cwl?action=edit&id=<?= $t['id'] ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
-                        <a href="cwl?action=delete&id=<?= $t['id'] ?>&csrf_token=<?= csrfToken() ?>" class="btn btn-sm btn-danger"
-                           data-confirm="¿Eliminar temporada CWL <?= clean($t['mes']) ?>?"><i class="bi bi-trash"></i></a>
+                        <?= deleteButton('cwl', ['id' => $t['id']], '¿Eliminar temporada CWL ' . $t['mes'] . '?') ?>
                     </td>
                 </tr>
                 <?php endforeach; ?>

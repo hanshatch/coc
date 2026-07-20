@@ -114,6 +114,41 @@ function verifyCsrf(): void
     }
 }
 
+/**
+ * Botón de borrado como formulario POST con token CSRF.
+ * Evita exponer el token en la URL y que un prefetch dispare el borrado.
+ *
+ * @param string               $url     Destino del formulario
+ * @param array<string,scalar> $fields  Campos ocultos (ej. ['id' => 5])
+ */
+function deleteButton(
+    string $url,
+    array $fields,
+    string $confirm,
+    string $title = 'Eliminar',
+    string $class = 'btn btn-sm btn-danger',
+    string $icon = 'bi-trash'
+): string {
+    $html = '<form method="POST" action="' . clean($url) . '" class="d-inline">'
+          . csrfField()
+          . '<input type="hidden" name="_action" value="delete">';
+
+    foreach ($fields as $name => $value) {
+        $html .= '<input type="hidden" name="' . clean($name) . '" value="' . clean((string) $value) . '">';
+    }
+
+    return $html
+        . '<button type="submit" class="' . clean($class) . '" title="' . clean($title) . '"'
+        . ' data-confirm="' . clean($confirm) . '">'
+        . '<i class="bi ' . clean($icon) . '"></i></button>'
+        . '</form>';
+}
+
+function isDeleteRequest(): bool
+{
+    return $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['_action'] ?? '') === 'delete';
+}
+
 // ── Flash Messages ────────────────────────────────────────────
 
 function setFlash(string $type, string $message): void

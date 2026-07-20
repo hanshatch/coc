@@ -6,4 +6,6 @@ node_modules/
 *.log
 .gemini/
 /tmp/
-clash-tracker/config/database.php
+
+# Credenciales — nunca versionar
+config/credentials.php

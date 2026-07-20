@@ -8,9 +8,9 @@ $db     = getDB();
 $action = $_GET['action'] ?? 'list';
 
 // ── ELIMINAR ──────────────────────────────────────────────────
-if ($action === 'delete' && isset($_GET['id'])) {
+if (isDeleteRequest()) {
     verifyCsrf();
-    $id = (int) $_GET['id'];
+    $id = (int) ($_POST['id'] ?? 0);
     $db->prepare('DELETE FROM juegos_clan WHERE id = ?')->execute([$id]);
     logActivity('eliminar', 'juegos_clan', $id, 'Juegos eliminados');
     setFlash('success', 'Juegos del clan eliminados.');
@@ -145,8 +145,7 @@ require __DIR__ . '/includes/header.php';
                     <td class="text-end">
                         <a href="juegos_detalle?id=<?= $j['id'] ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a>
                         <a href="juegos?action=edit&id=<?= $j['id'] ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
-                        <a href="juegos?action=delete&id=<?= $j['id'] ?>&csrf_token=<?= csrfToken() ?>" class="btn btn-sm btn-danger"
-                           data-confirm="¿Eliminar estos juegos del clan?"><i class="bi bi-trash"></i></a>
+                        <?= deleteButton('juegos', ['id' => $j['id']], '¿Eliminar estos juegos del clan?') ?>
                     </td>
                 </tr>
                 <?php endforeach; ?>
