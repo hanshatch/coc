@@ -69,9 +69,9 @@ $participaciones->execute([$id]);
 $participaciones = $participaciones->fetchAll();
 
 $jugadoresDisp = $db->prepare(
-    'SELECT id, nombre, tag FROM jugadores
+    'SELECT id, usuario FROM jugadores
      WHERE activo = 1 AND id NOT IN (SELECT jugador_id FROM donaciones WHERE periodo_id = ?)
-     ORDER BY nombre ASC'
+     ORDER BY usuario ASC'
 );
 $jugadoresDisp->execute([$id]);
 $jugadoresDisp = $jugadoresDisp->fetchAll();
@@ -102,7 +102,7 @@ require __DIR__ . '/includes/header.php';
             <div class="row g-2 align-items-end">
                 <div class="col-md-8">
                     <select name="jugador_ids[]" class="form-select" multiple size="5">
-                        <?php foreach ($jugadoresDisp as $j): ?><option value="<?= $j['id'] ?>"><?= clean($j['usuario']) ?> (<?= clean($j['usuario']) ?>)</option><?php endforeach; ?>
+                        <?php foreach ($jugadoresDisp as $j): ?><option value="<?= $j['id'] ?>"><?= clean($j['usuario']) ?></option><?php endforeach; ?>
                     </select>
                 </div>
                 <div class="col-md-4"><button type="submit" class="btn btn-primary w-100"><i class="bi bi-plus-lg"></i> Agregar</button></div>

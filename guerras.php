@@ -6,14 +6,7 @@ requireLogin();
 
 $db     = getDB();
 
-// ── AUTO-UPDATE DB (Manejo de transición) ────────────────────
-try {
-    $check = $db->query("SHOW COLUMNS FROM guerras LIKE 'tamano'");
-    if (!$check->fetch()) {
-        $db->exec("ALTER TABLE guerras ADD COLUMN tamano INT DEFAULT 15 AFTER oponente");
-    }
-} catch (Exception $e) {}
-
+// La columna 'tamano' se movió a sql/migrations/002_tag_a_usuario.sql
 $action = $_GET['action'] ?? 'list';
 
 // ── ELIMINAR ──────────────────────────────────────────────────

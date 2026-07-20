@@ -7,10 +7,44 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../config/database.php';
 
-// Iniciar sesión si no está activa
+// Cierra la sesión tras este tiempo sin actividad.
+define('SESSION_IDLE_TIMEOUT', 7200); // 2 horas
+
+// ── Sesión ────────────────────────────────────────────────────
+
+/**
+ * ¿La petición llegó por HTTPS? Contempla el proxy inverso de Hostinger,
+ * que termina TLS y reenvía por HTTP con X-Forwarded-Proto.
+ */
+function isHttps(): bool
+{
+    if (!empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) !== 'off') {
+        return true;
+    }
+    return strtolower((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https';
+}
+
 if (session_status() === PHP_SESSION_NONE) {
+    session_set_cookie_params([
+        'lifetime' => 0,
+        'path'     => '/',
+        'domain'   => '',
+        'secure'   => isHttps(),
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
     session_start();
 }
+
+// Expiración por inactividad. No redirige aquí para no crear un bucle en
+// login.php: al vaciar user_id, requireLogin() se encarga del redirect.
+if (isset($_SESSION['last_activity'])
+    && (time() - (int) $_SESSION['last_activity']) > SESSION_IDLE_TIMEOUT) {
+    $_SESSION = [];
+    session_regenerate_id(true);
+    setFlash('error', 'Tu sesión expiró por inactividad. Inicia sesión de nuevo.');
+}
+$_SESSION['last_activity'] = time();
 
 // ── Autenticación ─────────────────────────────────────────────
 
@@ -53,14 +87,72 @@ function currentUser(): ?array
     ];
 }
 
+// ── Control de fuerza bruta ───────────────────────────────────
+
+define('LOGIN_MAX_ATTEMPTS', 5);
+define('LOGIN_WINDOW_SECONDS', 900); // 15 minutos
+
+function clientIp(): string
+{
+    return substr((string) ($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0'), 0, 45);
+}
+
+/**
+ * Intentos fallidos recientes para este usuario o esta IP.
+ * Si la tabla aún no existe, devuelve 0 y lo registra: preferimos no
+ * dejar a todo el clan fuera del sistema por una migración pendiente.
+ */
+function failedLoginCount(string $username): int
+{
+    try {
+        $stmt = getDB()->prepare(
+            'SELECT COUNT(*) FROM login_intentos
+             WHERE exitoso = 0
+               AND intentado_en > (NOW() - INTERVAL ' . LOGIN_WINDOW_SECONDS . ' SECOND)
+               AND (username = ? OR ip = ?)'
+        );
+        $stmt->execute([$username, clientIp()]);
+        return (int) $stmt->fetchColumn();
+    } catch (PDOException $e) {
+        error_log('Rate limit no disponible: ' . $e->getMessage());
+        return 0;
+    }
+}
+
+function loginIsBlocked(string $username): bool
+{
+    return failedLoginCount($username) >= LOGIN_MAX_ATTEMPTS;
+}
+
+function recordLoginAttempt(string $username, bool $success): void
+{
+    try {
+        $db = getDB();
+        $db->prepare('INSERT INTO login_intentos (username, ip, exitoso) VALUES (?, ?, ?)')
+           ->execute([mb_substr($username, 0, 50), clientIp(), $success ? 1 : 0]);
+
+        if ($success) {
+            // Limpieza oportunista del histórico.
+            $db->exec('DELETE FROM login_intentos WHERE intentado_en < (NOW() - INTERVAL 7 DAY)');
+        }
+    } catch (PDOException $e) {
+        error_log('No se pudo registrar el intento de login: ' . $e->getMessage());
+    }
+}
+
 function login(string $username, string $password): bool
 {
+    if (loginIsBlocked($username)) {
+        return false;
+    }
+
     $db   = getDB();
     $stmt = $db->prepare('SELECT * FROM usuarios WHERE username = ? AND activo = 1 LIMIT 1');
     $stmt->execute([$username]);
     $user = $stmt->fetch();
 
     if ($user && password_verify($password, $user['password_hash'])) {
+        recordLoginAttempt($username, true);
         session_regenerate_id(true);
         $_SESSION['user_id']  = (int) $user['id'];
         $_SESSION['username'] = $user['username'];
@@ -69,6 +161,13 @@ function login(string $username, string $password): bool
         return true;
     }
 
+    // Iguala el costo de un usuario inexistente al de uno real, para que el
+    // tiempo de respuesta no revele qué usuarios existen.
+    if (!$user) {
+        password_verify($password, '$2y$12$dC5L4VkzdO.ImBZejADt/ORjgZewUUZkL3tQfKkFMV21oJ.ezCONK');
+    }
+
+    recordLoginAttempt($username, false);
     return false;
 }
 

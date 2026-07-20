@@ -15,6 +15,13 @@ if (isLoggedIn()) {
 
 $error = '';
 
+// login.php no usa header.php, así que renderiza los flashes por su cuenta
+// (p. ej. el aviso de sesión expirada por inactividad).
+$flash = getFlash();
+if ($flash) {
+    $error = $flash['message'];
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verifyCsrf();
     $username = trim($_POST['username'] ?? '');
@@ -22,6 +29,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($username === '' || $password === '') {
         $error = 'Completa todos los campos.';
+    } elseif (loginIsBlocked($username)) {
+        $error = 'Demasiados intentos fallidos. Espera 15 minutos e inténtalo de nuevo.';
     } elseif (login($username, $password)) {
         header('Location: index');
         exit;

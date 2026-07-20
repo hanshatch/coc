@@ -6,24 +6,7 @@ requireLogin();
 
 $db     = getDB();
 
-// ── AUTO-UPDATE DB (Manejo de transición Tag -> Usuario) ─────
-try {
-    $check = $db->query("SHOW COLUMNS FROM jugadores LIKE 'usuario'");
-    if (!$check->fetch()) {
-        // Si no existe 'usuario', intentamos renombrar 'tag'
-        $checkTag = $db->query("SHOW COLUMNS FROM jugadores LIKE 'tag'");
-        if ($checkTag->fetch()) {
-            $db->exec("ALTER TABLE jugadores CHANGE tag usuario VARCHAR(50) NOT NULL");
-            // También quitamos columnas viejas si existen
-            $db->exec("ALTER TABLE jugadores DROP COLUMN IF EXISTS nombre");
-            $db->exec("ALTER TABLE jugadores DROP COLUMN IF EXISTS nivel_th");
-            $db->exec("ALTER TABLE jugadores DROP COLUMN IF EXISTS nivel_jugador");
-        }
-    }
-} catch (Exception $e) {
-    // Ignoramos errores de auto-update para no bloquear la app
-}
-
+// La migración tag -> usuario se movió a sql/migrations/002_tag_a_usuario.sql
 $action = $_GET['action'] ?? 'list';
 
 // ── ELIMINAR ──────────────────────────────────────────────────

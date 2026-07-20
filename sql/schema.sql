@@ -29,10 +29,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS jugadores (
     id             INT AUTO_INCREMENT PRIMARY KEY,
-    tag            VARCHAR(15)  NOT NULL UNIQUE,
-    nombre         VARCHAR(50)  NOT NULL,
-    nivel_th       INT          NOT NULL DEFAULT 1,
-    nivel_jugador  INT          NOT NULL DEFAULT 1,
+    usuario        VARCHAR(50)  NOT NULL UNIQUE,
     rol_clan       ENUM('lider','colider','veterano','miembro') NOT NULL DEFAULT 'miembro',
     fecha_ingreso  DATE         NULL,
     activo         TINYINT(1)   NOT NULL DEFAULT 1,
@@ -50,6 +47,7 @@ CREATE TABLE IF NOT EXISTS guerras (
     id                 INT AUTO_INCREMENT PRIMARY KEY,
     fecha              DATE         NOT NULL,
     oponente           VARCHAR(100) NOT NULL,
+    tamano             INT          NOT NULL DEFAULT 15,
     resultado          ENUM('victoria','derrota','empate','en_curso') NOT NULL DEFAULT 'en_curso',
     estrellas_clan     INT          NOT NULL DEFAULT 0,
     estrellas_oponente INT          NOT NULL DEFAULT 0,
@@ -82,6 +80,7 @@ CREATE TABLE IF NOT EXISTS cwl_temporadas (
     id              INT AUTO_INCREMENT PRIMARY KEY,
     mes             VARCHAR(7)  NOT NULL,
     liga            VARCHAR(50) NULL,
+    tamano          INT         NOT NULL DEFAULT 15,
     posicion_final  INT         NULL,
     notas           TEXT        NULL,
     created_at      DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -98,6 +97,8 @@ CREATE TABLE IF NOT EXISTS cwl_participaciones (
     participo     TINYINT(1)   NOT NULL DEFAULT 0,
     estrellas     TINYINT      NULL,
     porcentaje    DECIMAL(5,2) NULL,
+    ataques       TINYINT      NULL,
+    bonus         TINYINT(1)   NOT NULL DEFAULT 0,
     UNIQUE KEY uk_cwl_jugador_dia (temporada_id, jugador_id, dia),
     CONSTRAINT fk_cwl_temporada FOREIGN KEY (temporada_id) REFERENCES cwl_temporadas(id) ON DELETE CASCADE,
     CONSTRAINT fk_cwl_jugador   FOREIGN KEY (jugador_id)   REFERENCES jugadores(id)      ON DELETE CASCADE
@@ -199,4 +200,18 @@ CREATE TABLE IF NOT EXISTS log_actividad (
     created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_log_fecha (created_at),
     CONSTRAINT fk_log_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+) ENGINE=InnoDB;
+
+-- ------------------------------------------------------------
+-- Intentos de login (control de fuerza bruta)
+-- Sin FK a usuarios: también registra usuarios inexistentes.
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS login_intentos (
+    id            INT AUTO_INCREMENT PRIMARY KEY,
+    username      VARCHAR(50)  NOT NULL,
+    ip            VARCHAR(45)  NOT NULL,
+    exitoso       TINYINT(1)   NOT NULL DEFAULT 0,
+    intentado_en  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_intento_user (username, intentado_en),
+    INDEX idx_intento_ip   (ip, intentado_en)
 ) ENGINE=InnoDB;
