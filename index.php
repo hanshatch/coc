@@ -122,7 +122,7 @@ usort($nulos, fn($a, $b) => [$a['historia'], (int) ($a['donaciones'] ?? 0)]
 $completos = array_filter($jugadores, fn($j) => $j['completo']);
 usort($completos, fn($a, $b) => ($b['cwl_prom'] ?? 0) <=> ($a['cwl_prom'] ?? 0));
 
-$parciales = array_filter($jugadores, fn($j) => !$j['nulo'] && !$j['completo']);
+$parciales = array_filter($jugadores, fn($j) => !$j['sinParticipar'] && !$j['completo']);
 usort($parciales, fn($a, $b) => [$a['aporta'], $a['arenas']] <=> [$b['aporta'], $b['arenas']]);
 
 $rolBadge = ['lider'=>'badge-gold','colider'=>'badge-purple','veterano'=>'badge-blue','miembro'=>'badge-muted'];
