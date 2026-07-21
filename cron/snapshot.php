@@ -23,12 +23,14 @@ if (PHP_SAPI !== 'cli') {
 }
 
 require_once __DIR__ . '/../includes/coc_sync.php';
+require_once __DIR__ . '/../includes/resumen.php';
 
 $inicio  = date('Y-m-d H:i:s');
 $hoy     = date('Y-m-d');
 $db      = getDB();
 $errores = [];
 $resumen = [];
+$roster  = null;
 
 function paso(string $nombre, callable $fn): void
 {
@@ -45,9 +47,9 @@ function paso(string $nombre, callable $fn): void
 
 echo "=== Captura diaria $inicio ===\n";
 
-paso('roster', function (): string {
-    $r = cocAplicarSync(cocDiffRoster());
-    return sprintf('%d actualizados, %d altas, %d bajas', $r['actualizados'], $r['altas'], $r['bajas']);
+paso('roster', function () use (&$roster): string {
+    $roster = cocAplicarSync(cocDiffRoster());
+    return sprintf('%d actualizados, %d altas, %d bajas', $roster['actualizados'], $roster['altas'], $roster['bajas']);
 });
 
 paso('clan', function () use ($db, $hoy): string {
@@ -151,6 +153,17 @@ paso('cwl', function (): string {
         return 'sin temporada activa';
     }
     return $r['mes'] === '' ? 'sin temporada' : sprintf('temporada %s, %d jugadores', $r['mes'], $r['jugadores']);
+});
+
+// ── Aviso por Telegram ────────────────────────────────────────
+// Se manda después de capturar, para que el resumen refleje los datos
+// de hoy y no los de ayer.
+paso('telegram', function () use ($roster): string {
+    if (!tgConfigurado() || !defined('TELEGRAM_CHAT_ID') || TELEGRAM_CHAT_ID === '') {
+        return 'sin configurar';
+    }
+    $r = resumenDiario($roster);
+    return tgEnviar($r['texto']) ? 'resumen enviado' : 'no se pudo enviar';
 });
 
 $estado = $errores ? (count($errores) >= 4 ? 'error' : 'parcial') : 'ok';

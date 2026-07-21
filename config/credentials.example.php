@@ -17,3 +17,9 @@ define('DB_CHARSET', 'utf8mb4');
 // la API responde 403 a todas las peticiones.
 define('COC_API_TOKEN', '');
 define('COC_CLAN_TAG', '');
+
+// ── Telegram (crear el bot con @BotFather) ──
+// Un bot no puede escribir primero: la persona debe mandarle un mensaje
+// para que exista el chat y se pueda obtener su id.
+define('TELEGRAM_BOT_TOKEN', '');
+define('TELEGRAM_CHAT_ID', '');
