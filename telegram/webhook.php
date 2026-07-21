@@ -67,9 +67,28 @@ function atender(array $msg): void
     $admin = $stmt->fetch();
 
     if (!$admin) {
-        // Sin filtrar, cualquiera que dé con el bot vería el estado del
-        // clan. Se responde algo neutro para no confirmar qué es esto.
-        tgEnviar('No tienes acceso a este bot.', (string) $tgId);
+        // Queda anotado: sin esto, cuando alguien pedía acceso no había
+        // forma de saber quién fue para poder dárselo.
+        $db->prepare(
+            'INSERT INTO telegram_intentos (telegram_id, nombre, usuario) VALUES (?,?,?)
+             ON DUPLICATE KEY UPDATE veces = veces + 1, nombre = VALUES(nombre), usuario = VALUES(usuario)'
+        )->execute([$tgId, $nombre ?: null, $msg['from']['username'] ?? null]);
+
+        // Se avisa al dueño para que pueda autorizarlo de inmediato.
+        $duenio = $db->query('SELECT telegram_id FROM telegram_admins WHERE es_duenio = 1 LIMIT 1')->fetchColumn();
+        if ($duenio) {
+            tgEnviar(
+                "🔔 <b>" . tgEscapar($nombre ?: 'Alguien') . "</b>"
+                . (isset($msg['from']['username']) ? ' (@' . tgEscapar((string) $msg['from']['username']) . ')' : '')
+                . " intentó usar el bot.\n\n"
+                . "Para darle acceso:\n<code>/autorizar " . $tgId . "</code>",
+                (string) $duenio
+            );
+        }
+
+        // Se responde algo neutro: sin filtrar, cualquiera que dé con el
+        // bot vería el estado del clan.
+        tgEnviar('No tienes acceso a este bot. Ya avisé a los administradores.', (string) $tgId);
         return;
     }
 
@@ -229,11 +248,32 @@ function autorizar(array $admin, string $arg): string
 
 function listaAdmins(): string
 {
-    $l = ['<b>Con acceso al bot</b>'];
-    foreach (getDB()->query('SELECT * FROM telegram_admins ORDER BY es_duenio DESC, creado_en ASC') as $a) {
+    $db = getDB();
+    $l  = ['<b>Con acceso al bot</b>'];
+    foreach ($db->query('SELECT * FROM telegram_admins ORDER BY es_duenio DESC, creado_en ASC') as $a) {
         $l[] = '· ' . tgEscapar((string) ($a['nombre'] ?: $a['telegram_id']))
              . ($a['es_duenio'] ? ' <i>(dueño)</i>' : '')
              . ($a['recibe_avisos'] ? '' : ' <i>(sin avisos)</i>');
     }
+
+    // Quien pidió acceso y sigue sin tenerlo, con el comando listo para
+    // copiar: es el caso en que uno abre esta lista.
+    $pend = $db->query(
+        'SELECT i.* FROM telegram_intentos i
+          WHERE i.telegram_id NOT IN (SELECT telegram_id FROM telegram_admins)
+       ORDER BY i.ultimo_intento DESC LIMIT 10'
+    )->fetchAll();
+
+    if ($pend) {
+        $l[] = '';
+        $l[] = '<b>Pidieron acceso</b>';
+        foreach ($pend as $p) {
+            $l[] = '· ' . tgEscapar((string) ($p['nombre'] ?: 'sin nombre'))
+                 . ($p['usuario'] ? ' (@' . tgEscapar((string) $p['usuario']) . ')' : '')
+                 . ' — ' . $p['veces'] . ' vez' . ((int) $p['veces'] === 1 ? '' : 'es');
+            $l[] = '  <code>/autorizar ' . $p['telegram_id'] . '</code>';
+        }
+    }
+
     return implode("\n", $l);
 }
