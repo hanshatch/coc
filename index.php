@@ -162,9 +162,21 @@ unset($j);
 $expulsar = array_filter($jugadores, fn($j) => $j['expulsar']);
 usort($expulsar, fn($a, $b) => $a['historia'] <=> $b['historia']);
 
-// Los mejores: más arenas cubiertas y mejor rendimiento en guerra.
-$mejores = array_filter($jugadores, fn($j) => $j['completo']);
-usort($mejores, fn($a, $b) => [$b['arenas'], $b['cwlProm'] ?? 0] <=> [$a['arenas'], $a['cwlProm'] ?? 0]);
+// Una guerra de clan puede necesitar hasta 25 jugadores, así que la
+// lista se llena hasta ese cupo aunque no todos hayan cubierto el 100%: se ordena por
+// cobertura primero y por calidad de ataque después, y quien cubrió todo
+// queda marcado. Así siempre hay con quién armar el mapa.
+const CUPO_GUERRA = 25;
+
+$mejores = $jugadores;
+usort($mejores, function (array $a, array $b): int {
+    $ca = $a['arenas'] ? $a['aporta'] / $a['arenas'] : 0;
+    $cb = $b['arenas'] ? $b['aporta'] / $b['arenas'] : 0;
+    return [$cb, $b['cwlProm'] ?? 0, $b['historia']]
+       <=> [$ca, $a['cwlProm'] ?? 0, $a['historia']];
+});
+// Nadie que esté en la lista de expulsar tiene sitio en el mapa.
+$mejores = array_slice(array_values(array_filter($mejores, fn($j) => !$j['expulsar'])), 0, CUPO_GUERRA);
 
 $parciales = array_filter($jugadores, fn($j) => !$j['expulsar'] && !$j['completo']);
 usort($parciales, fn($a, $b) => [$a['aporta'], $a['arenas']] <=> [$b['aporta'], $b['arenas']]);
@@ -194,7 +206,7 @@ require __DIR__ . '/includes/header.php';
         <span><i class="bi bi-lightning-fill text-<?= $guerrasConDetalle ? 'success' : 'muted' ?>"></i>
             Guerras: <strong><?= $guerrasConDetalle ?></strong> de <?= $guerrasEnVentana ?> con detalle por jugador</span>
         <span><i class="bi bi-trophy-fill text-<?= $hayCwl ? 'success' : 'muted' ?>"></i>
-            CWL: <strong><?= $hayCwl ? 'sí' : 'no' ?></strong></span>
+            Liga: <strong><?= $hayCwl ? 'sí' : 'no' ?></strong></span>
         <span><i class="bi bi-controller text-<?= $hayJuegos ? 'success' : 'muted' ?>"></i>
             Juegos: <strong><?= $hayJuegos ? count($fechasSnap) . ' lecturas' : 'faltan lecturas' ?></strong></span>
     </div>
@@ -215,7 +227,7 @@ require __DIR__ . '/includes/header.php';
                 <div class="card-body text-muted pt-0">Nadie quedó en cero absoluto.</div>
             <?php else: ?>
             <div class="table-responsive"><table class="table table-hover mb-0">
-                <thead><tr><th>Jugador</th><th class="text-center">Capital</th><th class="text-center">Guerra</th><th class="text-center">CWL</th><th class="text-center">Juegos</th><th class="text-center">Historia</th></tr></thead>
+                <thead><tr><th>Jugador</th><th class="text-center">Capital</th><th class="text-center">Guerra</th><th class="text-center">Liga</th><th class="text-center">Juegos</th><th class="text-center">Historia</th></tr></thead>
                 <tbody>
                 <?php foreach ($expulsar as $j): $d = $j['detalle']; ?>
                     <tr>
@@ -246,30 +258,37 @@ require __DIR__ . '/includes/header.php';
 
     <!-- ── DERECHA: los mejores ────────────────────────────────── -->
     <div class="col-lg-6">
-        <div class="card h-100" style="border-left:3px solid var(--ct-green-text)">
+        <div class="card" style="border-left:3px solid var(--ct-green-text)">
             <div class="card-header">
-                <i class="bi bi-shield-fill-check text-success"></i> Mejores jugadores
-                <span class="badge badge-green ms-1"><?= count($mejores) ?></span>
+                <i class="bi bi-shield-fill-check text-success"></i> Mejores para guerra
+                <span class="badge badge-green ms-1"><?= count($mejores) ?> de <?= CUPO_GUERRA ?></span>
             </div>
-            <div class="card-body py-2">
-                <small class="text-muted">Participaron en todos los frentes que tuvieron disponibles. Los primeros para armar guerra.</small>
+            <div class="card-body py-2 flex-grow-0">
+                <small class="text-muted">Una guerra de clan puede llegar a necesitar <?= CUPO_GUERRA ?> jugadores. Van ordenados por cobertura y calidad de ataque.</small>
             </div>
             <?php if (!$mejores): ?>
-                <div class="card-body text-muted pt-0">Nadie cubrió todas sus arenas.</div>
+                <div class="card-body text-muted pt-0">Sin jugadores disponibles.</div>
             <?php else: ?>
             <div class="table-responsive"><table class="table table-hover mb-0">
-                <thead><tr><th class="text-center">#</th><th>Jugador</th><th class="text-center">Capital</th><th class="text-center">Guerra</th><th class="text-center">CWL</th><th class="text-center">⭐/ataque</th></tr></thead>
+                <thead><tr><th class="text-center">#</th><th>Jugador</th><th class="text-center">Cubrió</th><th class="text-center">Capital</th><th class="text-center">Liga</th><th class="text-center">⭐/ataque</th></tr></thead>
                 <tbody>
                 <?php foreach ($mejores as $i => $j): $d = $j['detalle']; ?>
                     <tr>
                         <td class="text-center text-muted"><?= $i + 1 ?></td>
                         <td>
                             <strong class="text-white"><?= clean($j['nombre_juego']) ?></strong>
+                            <?php if ($j['completo']): ?>
+                                <i class="bi bi-check-circle-fill text-success ms-1" title="Participó en todos sus frentes"></i>
+                            <?php endif; ?>
                             <div><small class="text-muted"><?= $j['th_nivel'] ? 'TH' . (int) $j['th_nivel'] : '' ?></small></div>
                         </td>
-                        <td class="text-center"><?= $d['capital']['tuvo'] ? '<span class="badge badge-green">' . $d['capital']['hizo'] . ' de ' . $d['capital']['de'] . '</span>' : '<span class="text-muted">—</span>' ?></td>
-                        <td class="text-center"><?= $d['guerra']['tuvo'] ? '<span class="badge badge-green">' . $d['guerra']['hizo'] . ' de ' . $d['guerra']['de'] . '</span>' : '<span class="text-muted">—</span>' ?></td>
-                        <td class="text-center"><?= $d['cwl']['tuvo'] ? '<span class="badge badge-green">' . $d['cwl']['hizo'] . '/7</span>' : '<span class="text-muted">—</span>' ?></td>
+                        <td class="text-center">
+                            <span class="badge <?= $j['completo'] ? 'badge-green' : ($j['aporta'] ? 'badge-gold' : 'badge-muted') ?>">
+                                <?= (int) $j['aporta'] ?> de <?= (int) $j['arenas'] ?>
+                            </span>
+                        </td>
+                        <td class="text-center"><?= $d['capital']['tuvo'] ? $d['capital']['hizo'] . ' de ' . $d['capital']['de'] : '<span class="text-muted">—</span>' ?></td>
+                        <td class="text-center"><?= $d['cwl']['tuvo'] ? $d['cwl']['hizo'] . '/7' : '<span class="text-muted">no entró</span>' ?></td>
                         <td class="text-center">
                             <?php if ($j['cwlProm'] !== null): ?>
                                 <span class="badge <?= $j['cwlProm'] >= 2.5 ? 'badge-green' : ($j['cwlProm'] >= 2 ? 'badge-gold' : 'badge-muted') ?>"><?= $j['cwlProm'] ?></span>
@@ -279,8 +298,9 @@ require __DIR__ . '/includes/header.php';
                 <?php endforeach; ?>
                 </tbody>
             </table></div>
-            <div class="card-body pt-2">
+            <div class="card-body pt-2 flex-grow-0">
                 <small class="text-muted">
+                    La palomita marca a quien participó en todo lo que tuvo disponible.
                     Estrellas por ataque mide calidad, no esfuerzo: arriba de 2.5 destruye casi todo lo que toca.
                 </small>
             </div>
@@ -299,7 +319,7 @@ require __DIR__ . '/includes/header.php';
         <small class="text-muted">Aportan en algunos frentes pero no en todos. Es la lista a vigilar el mes que viene.</small>
     </div>
     <div class="table-responsive"><table class="table table-hover mb-0">
-        <thead><tr><th>Jugador</th><th class="text-center">Cubrió</th><th class="text-center">Capital</th><th class="text-center">Guerra</th><th class="text-center">CWL</th><th class="text-center">Juegos</th><th class="text-center">Donaciones</th></tr></thead>
+        <thead><tr><th>Jugador</th><th class="text-center">Cubrió</th><th class="text-center">Capital</th><th class="text-center">Guerra</th><th class="text-center">Liga</th><th class="text-center">Juegos</th><th class="text-center">Donaciones</th></tr></thead>
         <tbody>
         <?php foreach ($parciales as $j): $d = $j['detalle']; ?>
             <tr>

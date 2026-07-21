@@ -34,12 +34,12 @@ $totEstrellas = array_sum(array_column($filas, 'estrellas'));
 $totAtaques   = array_sum(array_column($filas, 'ataques'));
 $maxAtaques   = count($filas) * 7;
 
-$pageTitle = 'CWL ' . $temp['mes'];
+$pageTitle = 'Liga ' . $temp['mes'];
 require __DIR__ . '/includes/header.php';
 ?>
 
 <div class="ct-page-header">
-    <h1><i class="bi bi-trophy-fill"></i> CWL <?= clean($temp['mes']) ?></h1>
+    <h1><i class="bi bi-trophy-fill"></i> Liga <?= clean($temp['mes']) ?></h1>
     <a href="cwl" class="btn btn-secondary btn-sm"><i class="bi bi-arrow-left"></i> Volver</a>
 </div>
 
