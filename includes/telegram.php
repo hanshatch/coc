@@ -99,6 +99,54 @@ function tgEnviar(string $texto, ?string $chatId = null): bool
     return $ok;
 }
 
+// ── Gestión del grupo ─────────────────────────────────────────
+
+function tgAprobarSolicitud(string|int $chatId, int $usuarioId): bool
+{
+    $r = tgLlamar('approveChatJoinRequest', ['chat_id' => $chatId, 'user_id' => $usuarioId]);
+    return (bool) ($r['ok'] ?? false);
+}
+
+function tgRechazarSolicitud(string|int $chatId, int $usuarioId): bool
+{
+    $r = tgLlamar('declineChatJoinRequest', ['chat_id' => $chatId, 'user_id' => $usuarioId]);
+    return (bool) ($r['ok'] ?? false);
+}
+
+/**
+ * Saca a alguien del grupo. Se desbloquea enseguida para que pueda
+ * volver a solicitar entrada si regresa al clan: banChatMember sin
+ * desbloquear lo dejaría vetado para siempre.
+ */
+function tgExpulsar(string|int $chatId, int $usuarioId): bool
+{
+    $r = tgLlamar('banChatMember', ['chat_id' => $chatId, 'user_id' => $usuarioId]);
+    tgLlamar('unbanChatMember', ['chat_id' => $chatId, 'user_id' => $usuarioId, 'only_if_banned' => true]);
+    return (bool) ($r['ok'] ?? false);
+}
+
+// ── Ajustes que el sistema aprende solo ───────────────────────
+
+function tgAjuste(string $clave): ?string
+{
+    $stmt = getDB()->prepare('SELECT valor FROM ajustes WHERE clave = ?');
+    $stmt->execute([$clave]);
+    $v = $stmt->fetchColumn();
+    return $v === false ? null : (string) $v;
+}
+
+function tgGuardarAjuste(string $clave, string $valor): void
+{
+    getDB()->prepare('INSERT INTO ajustes (clave, valor) VALUES (?,?) ON DUPLICATE KEY UPDATE valor = VALUES(valor)')
+           ->execute([$clave, $valor]);
+}
+
+/** Id del grupo, aprendido cuando agregaron el bot como administrador. */
+function tgGrupoId(): ?string
+{
+    return tgAjuste('telegram_grupo_id');
+}
+
 /**
  * Parte un texto largo en trozos que quepan en un mensaje.
  *

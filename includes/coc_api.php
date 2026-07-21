@@ -143,6 +143,47 @@ function cocClan(): array
 }
 
 /**
+ * Comprueba que alguien controla una cuenta de Clash.
+ *
+ * El jugador genera el token dentro del juego (Ajustes → Más ajustes →
+ * API Token) y solo puede verlo quien tenga esa sesión abierta. Es el
+ * único endpoint de escritura de toda la API, y aun así no cambia nada
+ * del juego: únicamente responde si el token corresponde al tag.
+ *
+ * @return string 'ok' o 'invalid'
+ * @throws CocApiException
+ */
+function cocVerificarToken(string $tag, string $token): string
+{
+    if (!cocConfigurado()) {
+        throw new CocApiException('Falta configurar el acceso a la API.');
+    }
+
+    $ch = curl_init(COC_API_BASE . '/players/' . rawurlencode(cocNormalizarTag($tag)) . '/verifytoken');
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => COC_TIMEOUT,
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => json_encode(['token' => $token]),
+        CURLOPT_HTTPHEADER     => [
+            'Authorization: Bearer ' . COC_API_TOKEN,
+            'Content-Type: application/json',
+        ],
+    ]);
+
+    $body   = curl_exec($ch);
+    $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($status !== 200) {
+        throw new CocApiException('La API respondió con código ' . $status . ' al verificar el token.');
+    }
+
+    $d = json_decode((string) $body, true);
+    return ($d['status'] ?? '') === 'ok' ? 'ok' : 'invalid';
+}
+
+/**
  * Traduce el rol de la API al ENUM de la tabla jugadores.
  */
 function cocRolALocal(string $role): string
