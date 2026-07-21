@@ -29,6 +29,9 @@ $guerrasEnVentana  = $d['guerrasEnVentana'];
 $hayCwl            = $d['hayLiga'];
 $hayJuegos         = $d['hayJuegos'];
 $fechasSnap        = array_fill(0, $d['lecturas'], null);
+// Se toma aquí porque dentro de las tablas $d se reutiliza para el
+// detalle de cada jugador y taparía este valor.
+$midiendoDesde     = $d['midiendoDesde'];
 
 $rolBadge = ['lider'=>'badge-gold','colider'=>'badge-purple','veterano'=>'badge-blue','miembro'=>'badge-muted'];
 
@@ -76,7 +79,7 @@ require __DIR__ . '/includes/header.php';
                 <div class="card-body text-muted pt-0">Nadie quedó en cero absoluto.</div>
             <?php else: ?>
             <div class="table-responsive"><table class="table table-hover mb-0">
-                <thead><tr><th>Jugador</th><th class="text-center">Capital</th><th class="text-center">Guerra</th><th class="text-center">Liga</th><th class="text-center">Juegos</th><th class="text-center">Historia</th></tr></thead>
+                <thead><tr><th>Jugador</th><th class="text-center">Capital</th><th class="text-center">Guerra</th><th class="text-center">Liga</th><th class="text-center">Juegos</th><th class="text-center">Último día que jugó</th><th class="text-center">Historia</th></tr></thead>
                 <tbody>
                 <?php foreach ($expulsar as $j): $d = $j['detalle']; ?>
                     <tr>
@@ -89,6 +92,21 @@ require __DIR__ . '/includes/header.php';
                         <td class="text-center"><?= $d['liga']['tuvo'] ? '<span class="badge badge-red">0/7</span>' : '<span class="text-muted">no entró</span>' ?></td>
                         <td class="text-center"><?= $d['juegos']['tuvo'] ? '<span class="badge badge-red">0</span>' : '<span class="text-muted">—</span>' ?></td>
                         <td class="text-center">
+                            <?php if ($j['ultimaActividad']):
+                                $diasSin = (int) ((time() - strtotime((string) $j['ultimaActividad'])) / 86400); ?>
+                                <span class="badge <?= $diasSin >= 30 ? 'badge-red' : ($diasSin >= 7 ? 'badge-gold' : 'badge-green') ?>"
+                                      title="<?= $diasSin ?> días sin señal de actividad">
+                                    <?= date('d/m/Y', strtotime((string) $j['ultimaActividad'])) ?>
+                                </span>
+                            <?php elseif ($midiendoDesde): ?>
+                                <span class="badge badge-red" title="No se le detectó actividad en ningún día medido">
+                                    nada desde <?= date('d/m', strtotime((string) $midiendoDesde)) ?>
+                                </span>
+                            <?php else: ?>
+                                <span class="text-muted" title="Hacen falta al menos dos capturas para poder compararlas">sin medir aún</span>
+                            <?php endif; ?>
+                        </td>
+                        <td class="text-center">
                             <span class="<?= $j['historia'] >= 500 ? 'badge badge-blue' : 'text-muted' ?>"><?= number_format($j['historia']) ?> ⭐</span>
                         </td>
                     </tr>
@@ -97,8 +115,11 @@ require __DIR__ . '/includes/header.php';
             </table></div>
             <div class="card-body pt-2">
                 <small class="text-muted">
-                    La columna Historia son estrellas de guerra de por vida. Los de arriba, sin historia,
-                    son los candidatos claros; uno con miles de estrellas merece preguntarle antes de sacarlo.
+                    <b>Último día que jugó</b> no es la última conexión: la API no publica ese dato.
+                    Es el último día en que se le detectó movimiento en estrellas, oro de capital,
+                    puntos de juegos o donaciones. Solo se puede medir desde que empezamos a capturar.
+                    <b>Historia</b> son estrellas de guerra de por vida: los de arriba, sin historia,
+                    son los candidatos claros; uno con miles merece preguntarle antes de sacarlo.
                 </small>
             </div>
             <?php endif; ?>

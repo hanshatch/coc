@@ -116,6 +116,8 @@ function decisionesClan(int $dias = 30): array
     $stmt->execute([$lectura]);
     $jugadores = $stmt->fetchAll();
 
+    $actividad = ultimaActividad();
+
     foreach ($jugadores as &$j) {
         $id     = (int) $j['id'];
         $arenas = $aporta = 0;
@@ -171,6 +173,7 @@ function decisionesClan(int $dias = 30): array
             ? round($liga[$id]['estrellas'] / $liga[$id]['ataques'], 2) : null;
         $j['calidad']    = $j['promGuerra'] ?? $j['promLiga'];
 
+        $j['ultimaActividad'] = $actividad[$id] ?? null;
         $j['expulsar'] = $arenas > 0 && $aporta === 0;
         $j['completo'] = $arenas >= 2 && $aporta === $arenas;
     }
@@ -201,8 +204,58 @@ function decisionesClan(int $dias = 30): array
         'hayLiga'           => (bool) $liga,
         'hayJuegos'         => $hayJuegos,
         'lecturas'          => count($fechas),
+        'midiendoDesde'     => midiendoDesde(),
         'dias'              => $dias,
     ];
+}
+
+/**
+ * Última fecha en que se detectó que cada jugador jugó.
+ *
+ * La API no publica la última conexión: no tiene ni un campo de fecha.
+ * Esto lo deduce comparando capturas consecutivas: si sus acumulados de
+ * por vida se movieron, jugó; si no, no tocó el juego ese día.
+ *
+ * Solo mira lo que exige jugar de verdad. Los trofeos quedan fuera a
+ * propósito, porque cambian solos cuando a uno lo atacan estando
+ * desconectado, y darían por activo a quien no lo está.
+ *
+ * @return array<int,string> jugador_id => fecha
+ */
+function ultimaActividad(): array
+{
+    $filas = getDB()->query(
+        'SELECT s.jugador_id, MAX(s.fecha) AS ultima
+           FROM snapshots_jugador s
+           JOIN snapshots_jugador prev
+             ON prev.jugador_id = s.jugador_id
+            AND prev.fecha = (SELECT MAX(f.fecha) FROM snapshots_jugador f
+                               WHERE f.jugador_id = s.jugador_id AND f.fecha < s.fecha)
+          WHERE s.acum_guerra_estrellas <> prev.acum_guerra_estrellas
+             OR s.acum_capital_oro      <> prev.acum_capital_oro
+             OR s.acum_juegos_puntos    <> prev.acum_juegos_puntos
+             OR s.acum_donaciones       <> prev.acum_donaciones
+       GROUP BY s.jugador_id'
+    )->fetchAll();
+
+    $r = [];
+    foreach ($filas as $f) {
+        $r[(int) $f['jugador_id']] = (string) $f['ultima'];
+    }
+    return $r;
+}
+
+/**
+ * Desde cuándo se está midiendo. Sin dos capturas no se puede afirmar
+ * nada sobre la actividad de nadie.
+ */
+function midiendoDesde(): ?string
+{
+    $n = (int) getDB()->query('SELECT COUNT(DISTINCT fecha) FROM snapshots_jugador')->fetchColumn();
+    if ($n < 2) {
+        return null;
+    }
+    return (string) getDB()->query('SELECT MIN(fecha) FROM snapshots_jugador')->fetchColumn();
 }
 
 /**
