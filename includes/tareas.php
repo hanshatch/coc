@@ -11,6 +11,10 @@ declare(strict_types=1);
  */
 
 require_once __DIR__ . '/eventos.php';
+// tareaSnapshot() arma el resumen diario. Faltaba y el paso final de la
+// captura fallaba con "undefined function", sin ruido porque en
+// producción los errores van al log y no a pantalla.
+require_once __DIR__ . '/resumen.php';
 
 /**
  * Vigila lo que no espera al reloj: jugadores nuevos y cambios de
