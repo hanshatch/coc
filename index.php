@@ -4,182 +4,31 @@ declare(strict_types=1);
 /**
  * Tablero de decisión: a quién sacar y a quién meter a guerra.
  *
- * Se evalúa un mes completo, no un evento suelto. Faltar una vez puede
- * ser una mala semana; no aparecer en nada durante treinta días es un
- * patrón, y eso sí sostiene una expulsión.
- *
- * Cada actividad cuenta como una "arena" y solo pesa si el jugador tuvo
- * oportunidad real de jugarla. Quedar fuera del roster de CWL o no ser
- * convocado a una guerra son decisiones de la dirigencia: cobrárselas al
- * jugador marcaría a gente por algo que no depende de ellos.
+ * El cálculo vive en includes/decisiones.php porque los avisos de
+ * Telegram necesitan exactamente el mismo criterio. Si cada uno tuviera
+ * su copia, el tablero y el bot acabarían recomendando cosas distintas.
  */
 
 require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/includes/decisiones.php';
 requireLogin();
 
-$db    = getDB();
-$dias  = 30;
-$desde = date('Y-m-d', strtotime("-$dias days"));
-
+$db      = getDB();
+$dias    = 30;
 $lectura = $db->query('SELECT MAX(fecha) FROM snapshots_jugador')->fetchColumn();
 
-// ── Capital: cada fin de semana con desglose es una oportunidad ──
-$capital = [];
-$capOportunidades = (int) $db->query(
-    "SELECT COUNT(DISTINCT cs.id) FROM capital_semanas cs
-       JOIN capital_participaciones cp ON cp.semana_id = cs.id
-      WHERE cs.fecha_inicio >= '$desde'"
-)->fetchColumn();
-foreach ($db->query(
-    "SELECT cp.jugador_id, SUM(cp.ataques_realizados > 0) participo, SUM(cp.oro_aportado) oro
-       FROM capital_participaciones cp
-       JOIN capital_semanas cs ON cs.id = cp.semana_id
-      WHERE cs.fecha_inicio >= '$desde'
-   GROUP BY cp.jugador_id"
-) as $r) {
-    $capital[(int) $r['jugador_id']] = ['participo' => (int) $r['participo'], 'oro' => (int) $r['oro']];
-}
+$d = decisionesClan($dias);
 
-// ── Guerras: solo cuentan para quien fue convocado al mapa ──
-$guerra = [];
-foreach ($db->query(
-    "SELECT gp.jugador_id, COUNT(*) convocado,
-            SUM(gp.ataque1_estrellas IS NOT NULL OR gp.ataque2_estrellas IS NOT NULL) participo,
-            SUM(COALESCE(gp.ataque1_estrellas,0) + COALESCE(gp.ataque2_estrellas,0)) estrellas
-       FROM guerra_participaciones gp
-       JOIN guerras g ON g.id = gp.guerra_id
-      WHERE g.fecha >= '$desde'
-   GROUP BY gp.jugador_id"
-) as $r) {
-    $guerra[(int) $r['jugador_id']] = [
-        'convocado' => (int) $r['convocado'],
-        'participo' => (int) $r['participo'],
-        'estrellas' => (int) $r['estrellas'],
-    ];
-}
-$guerrasEnVentana = (int) $db->query("SELECT COUNT(*) FROM guerras WHERE fecha >= '$desde'")->fetchColumn();
-$guerrasConDetalle = (int) $db->query(
-    "SELECT COUNT(DISTINCT g.id) FROM guerras g
-       JOIN guerra_participaciones gp ON gp.guerra_id = g.id
-      WHERE g.fecha >= '$desde'"
-)->fetchColumn();
-
-// ── CWL: solo cuenta para quien entró al roster ──
-$cwl = [];
-foreach ($db->query(
-    "SELECT p.jugador_id, p.ataques, p.estrellas
-       FROM cwl_participaciones p
-       JOIN cwl_temporadas t ON t.id = p.temporada_id
-      WHERE CONCAT(t.mes, '-01') >= DATE_SUB('$desde', INTERVAL 1 MONTH)"
-) as $r) {
-    $cwl[(int) $r['jugador_id']] = ['ataques' => (int) $r['ataques'], 'estrellas' => (int) $r['estrellas']];
-}
-$hayCwl = (bool) $cwl;
-
-// ── Juegos del Clan: diferencia del acumulado entre dos lecturas ──
-$juegos = [];
-$fechasSnap = $db->query("SELECT DISTINCT fecha FROM snapshots_jugador WHERE fecha >= '$desde' ORDER BY fecha")->fetchAll(PDO::FETCH_COLUMN);
-$hayJuegos = count($fechasSnap) >= 2;
-if ($hayJuegos) {
-    $stmt = $db->prepare(
-        'SELECT ini.jugador_id, (fin.acum_juegos_puntos - ini.acum_juegos_puntos) puntos
-           FROM snapshots_jugador ini
-           JOIN snapshots_jugador fin ON fin.jugador_id = ini.jugador_id AND fin.fecha = ?
-          WHERE ini.fecha = ? AND ini.acum_juegos_puntos IS NOT NULL AND fin.acum_juegos_puntos IS NOT NULL'
-    );
-    $stmt->execute([end($fechasSnap), $fechasSnap[0]]);
-    foreach ($stmt as $r) {
-        $juegos[(int) $r['jugador_id']] = (int) $r['puntos'];
-    }
-}
-
-// ── Jugadores activos con su última lectura ──
-$stmt = $db->prepare(
-    'SELECT j.id, j.nombre_juego, j.rol_clan, s.th_nivel, s.donaciones, s.acum_guerra_estrellas
-       FROM jugadores j
-       LEFT JOIN snapshots_jugador s ON s.jugador_id = j.id AND s.fecha = ?
-      WHERE j.activo = 1'
-);
-$stmt->execute([$lectura]);
-$jugadores = $stmt->fetchAll();
-
-foreach ($jugadores as &$j) {
-    $id = (int) $j['id'];
-    $arenas = $aporta = 0;
-    $detalle = [];
-
-    // Capital: abierto a todo el clan, no jugarlo es decisión propia.
-    if ($capOportunidades > 0) {
-        $arenas++;
-        $p = $capital[$id]['participo'] ?? 0;
-        if ($p > 0) { $aporta++; }
-        $detalle['capital'] = ['de' => $capOportunidades, 'hizo' => $p, 'tuvo' => true];
-    }
-
-    // Guerras: solo si lo convocaron.
-    $conv = $guerra[$id]['convocado'] ?? 0;
-    if ($conv > 0) {
-        $arenas++;
-        $p = $guerra[$id]['participo'] ?? 0;
-        if ($p > 0) { $aporta++; }
-        $detalle['guerra'] = ['de' => $conv, 'hizo' => $p, 'tuvo' => true];
-    } else {
-        $detalle['guerra'] = ['tuvo' => false];
-    }
-
-    // CWL: solo si entró al roster.
-    if (isset($cwl[$id])) {
-        $arenas++;
-        if ($cwl[$id]['ataques'] > 0) { $aporta++; }
-        $detalle['cwl'] = ['de' => 7, 'hizo' => $cwl[$id]['ataques'], 'tuvo' => true];
-    } else {
-        $detalle['cwl'] = ['tuvo' => false];
-    }
-
-    // Juegos del Clan: abiertos a todos.
-    if ($hayJuegos) {
-        $arenas++;
-        $pts = $juegos[$id] ?? 0;
-        if ($pts > 0) { $aporta++; }
-        $detalle['juegos'] = ['puntos' => $pts, 'tuvo' => true];
-    } else {
-        $detalle['juegos'] = ['tuvo' => false];
-    }
-
-    $j['arenas']   = $arenas;
-    $j['aporta']   = $aporta;
-    $j['detalle']  = $detalle;
-    $j['historia'] = (int) ($j['acum_guerra_estrellas'] ?? 0);
-    $j['cwlProm']  = ($cwl[$id]['ataques'] ?? 0) > 0
-        ? round($cwl[$id]['estrellas'] / $cwl[$id]['ataques'], 2) : null;
-
-    $j['expulsar'] = $arenas > 0 && $aporta === 0;
-    $j['completo'] = $arenas >= 2 && $aporta === $arenas;
-}
-unset($j);
-
-// Arriba los que menos historia tienen: son los candidatos reales.
-$expulsar = array_filter($jugadores, fn($j) => $j['expulsar']);
-usort($expulsar, fn($a, $b) => $a['historia'] <=> $b['historia']);
-
-// Una guerra de clan puede necesitar hasta 25 jugadores, así que la
-// lista se llena hasta ese cupo aunque no todos hayan cubierto el 100%: se ordena por
-// cobertura primero y por calidad de ataque después, y quien cubrió todo
-// queda marcado. Así siempre hay con quién armar el mapa.
-const CUPO_GUERRA = 25;
-
-$mejores = $jugadores;
-usort($mejores, function (array $a, array $b): int {
-    $ca = $a['arenas'] ? $a['aporta'] / $a['arenas'] : 0;
-    $cb = $b['arenas'] ? $b['aporta'] / $b['arenas'] : 0;
-    return [$cb, $b['cwlProm'] ?? 0, $b['historia']]
-       <=> [$ca, $a['cwlProm'] ?? 0, $a['historia']];
-});
-// Nadie que esté en la lista de expulsar tiene sitio en el mapa.
-$mejores = array_slice(array_values(array_filter($mejores, fn($j) => !$j['expulsar'])), 0, CUPO_GUERRA);
-
-$parciales = array_filter($jugadores, fn($j) => !$j['expulsar'] && !$j['completo']);
-usort($parciales, fn($a, $b) => [$a['aporta'], $a['arenas']] <=> [$b['aporta'], $b['arenas']]);
+$jugadores         = $d['jugadores'];
+$expulsar          = $d['expulsar'];
+$mejores           = $d['mejores'];
+$parciales         = $d['parciales'];
+$capOportunidades  = $d['capOportunidades'];
+$guerrasConDetalle = $d['guerrasConDetalle'];
+$guerrasEnVentana  = $d['guerrasEnVentana'];
+$hayCwl            = $d['hayLiga'];
+$hayJuegos         = $d['hayJuegos'];
+$fechasSnap        = array_fill(0, $d['lecturas'], null);
 
 $rolBadge = ['lider'=>'badge-gold','colider'=>'badge-purple','veterano'=>'badge-blue','miembro'=>'badge-muted'];
 
@@ -237,7 +86,7 @@ require __DIR__ . '/includes/header.php';
                         </td>
                         <td class="text-center"><?= $d['capital']['tuvo'] ? '<span class="badge badge-red">0 de ' . $d['capital']['de'] . '</span>' : '<span class="text-muted">—</span>' ?></td>
                         <td class="text-center"><?= $d['guerra']['tuvo'] ? '<span class="badge badge-red">0 de ' . $d['guerra']['de'] . '</span>' : '<span class="text-muted">no convocado</span>' ?></td>
-                        <td class="text-center"><?= $d['cwl']['tuvo'] ? '<span class="badge badge-red">0/7</span>' : '<span class="text-muted">no entró</span>' ?></td>
+                        <td class="text-center"><?= $d['liga']['tuvo'] ? '<span class="badge badge-red">0/7</span>' : '<span class="text-muted">no entró</span>' ?></td>
                         <td class="text-center"><?= $d['juegos']['tuvo'] ? '<span class="badge badge-red">0</span>' : '<span class="text-muted">—</span>' ?></td>
                         <td class="text-center">
                             <span class="<?= $j['historia'] >= 500 ? 'badge badge-blue' : 'text-muted' ?>"><?= number_format($j['historia']) ?> ⭐</span>
@@ -288,10 +137,10 @@ require __DIR__ . '/includes/header.php';
                             </span>
                         </td>
                         <td class="text-center"><?= $d['capital']['tuvo'] ? $d['capital']['hizo'] . ' de ' . $d['capital']['de'] : '<span class="text-muted">—</span>' ?></td>
-                        <td class="text-center"><?= $d['cwl']['tuvo'] ? $d['cwl']['hizo'] . '/7' : '<span class="text-muted">no entró</span>' ?></td>
+                        <td class="text-center"><?= $d['liga']['tuvo'] ? $d['liga']['hizo'] . '/7' : '<span class="text-muted">no entró</span>' ?></td>
                         <td class="text-center">
-                            <?php if ($j['cwlProm'] !== null): ?>
-                                <span class="badge <?= $j['cwlProm'] >= 2.5 ? 'badge-green' : ($j['cwlProm'] >= 2 ? 'badge-gold' : 'badge-muted') ?>"><?= $j['cwlProm'] ?></span>
+                            <?php if ($j['calidad'] !== null): ?>
+                                <span class="badge <?= $j['calidad'] >= 2.5 ? 'badge-green' : ($j['calidad'] >= 2 ? 'badge-gold' : 'badge-muted') ?>"><?= $j['calidad'] ?></span>
                             <?php else: ?><span class="text-muted">—</span><?php endif; ?>
                         </td>
                     </tr>
@@ -330,7 +179,7 @@ require __DIR__ . '/includes/header.php';
                 <td class="text-center"><span class="badge <?= $j['aporta'] ? 'badge-gold' : 'badge-red' ?>"><?= $j['aporta'] ?> de <?= $j['arenas'] ?></span></td>
                 <td class="text-center"><?= $d['capital']['tuvo'] ? $d['capital']['hizo'] . ' de ' . $d['capital']['de'] : '<span class="text-muted">—</span>' ?></td>
                 <td class="text-center"><?= $d['guerra']['tuvo'] ? $d['guerra']['hizo'] . ' de ' . $d['guerra']['de'] : '<span class="text-muted">no convocado</span>' ?></td>
-                <td class="text-center"><?= $d['cwl']['tuvo'] ? $d['cwl']['hizo'] . '/7' : '<span class="text-muted">no entró</span>' ?></td>
+                <td class="text-center"><?= $d['liga']['tuvo'] ? $d['liga']['hizo'] . '/7' : '<span class="text-muted">no entró</span>' ?></td>
                 <td class="text-center"><?= $d['juegos']['tuvo'] ? number_format($d['juegos']['puntos']) : '<span class="text-muted">—</span>' ?></td>
                 <td class="text-center text-muted"><?= number_format((int) ($j['donaciones'] ?? 0)) ?></td>
             </tr>

@@ -24,6 +24,7 @@ if (PHP_SAPI !== 'cli') {
 
 require_once __DIR__ . '/../includes/coc_sync.php';
 require_once __DIR__ . '/../includes/resumen.php';
+require_once __DIR__ . '/../includes/eventos.php';
 
 $inicio  = date('Y-m-d H:i:s');
 $hoy     = date('Y-m-d');
@@ -153,6 +154,18 @@ paso('cwl', function (): string {
         return 'sin temporada activa';
     }
     return $r['mes'] === '' ? 'sin temporada' : sprintf('temporada %s, %d jugadores', $r['mes'], $r['jugadores']);
+});
+
+// ── Inactivos de larga duración ───────────────────────────────
+// Solo dispara cuando hay historial suficiente: con dos lecturas no se
+// puede afirmar nada sobre tres meses.
+paso('inactivos', function (): string {
+    $texto = avisoInactivos(90);
+    if ($texto === null) {
+        $r = jugadoresInactivos(90);
+        return $r['suficiente'] ? 'ninguno' : 'faltan datos (' . $r['diasCubiertos'] . ' días de historial)';
+    }
+    return avisarAdmins($texto) . ' avisados';
 });
 
 // ── Aviso por Telegram ────────────────────────────────────────
