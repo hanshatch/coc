@@ -130,6 +130,15 @@ paso('guerras', function (): string {
     return sprintf('%d nuevas de %d en el registro', $r['nuevas'], $r['total']);
 });
 
+// El detalle por jugador de una guerra normal solo existe mientras está
+// viva. Si el cron no pasa a tiempo, ese dato no se recupera nunca.
+paso('guerra en curso', function (): string {
+    $r = cocImportarGuerraActual();
+    return $r['jugadores'] === 0
+        ? 'sin guerra activa (' . $r['estado'] . ')'
+        : sprintf('%s, %d jugadores en el mapa', $r['estado'], $r['jugadores']);
+});
+
 paso('capital', function (): string {
     $r = cocImportarCapital(10);
     return sprintf('%d semanas nuevas, %d participaciones', $r['semanas'], $r['participaciones']);

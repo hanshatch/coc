@@ -2,127 +2,171 @@
 declare(strict_types=1);
 
 /**
- * Tablero principal: a quién sacar y a quién meter a guerra.
+ * Tablero de decisión: a quién sacar y a quién meter a guerra.
  *
- * La idea es medir participación en "arenas": los espacios donde un
- * miembro puede aportar y se puede comprobar con datos de la API. Hoy
- * son los asaltos al capital y la CWL.
+ * Se evalúa un mes completo, no un evento suelto. Faltar una vez puede
+ * ser una mala semana; no aparecer en nada durante treinta días es un
+ * patrón, y eso sí sostiene una expulsión.
  *
- * Solo cuenta una arena si el jugador tuvo oportunidad real de jugarla:
- * quedar fuera del roster de CWL es una decisión de la dirigencia, no
- * del jugador, y contarlo en contra marcaría a media plantilla por algo
- * que no depende de ellos.
+ * Cada actividad cuenta como una "arena" y solo pesa si el jugador tuvo
+ * oportunidad real de jugarla. Quedar fuera del roster de CWL o no ser
+ * convocado a una guerra son decisiones de la dirigencia: cobrárselas al
+ * jugador marcaría a gente por algo que no depende de ellos.
  */
 
 require_once __DIR__ . '/includes/auth.php';
 requireLogin();
 
-$db = getDB();
-
-// Umbral para considerar que alguien donó algo. Las donaciones se
-// reinician cada temporada, así que a principio de mes todos se ven
-// bajos: por eso pesa menos que las arenas de evento.
-const MINIMO_DONACIONES = 100;
-
-// A partir de cuántas estrellas de guerra de por vida consideramos que
-// alguien tiene historia en el juego. No prueba que siga activo, pero
-// distingue al veterano que faltó una semana del que nunca ha aportado.
-const VETERANO_ESTRELLAS = 500;
-
-$cwlTemp = $db->query(
-    'SELECT t.id, t.mes FROM cwl_temporadas t
-       JOIN cwl_participaciones p ON p.temporada_id = t.id
-   GROUP BY t.id ORDER BY t.mes DESC LIMIT 1'
-)->fetch();
-
-$capSemana = $db->query(
-    'SELECT s.id, s.fecha_inicio FROM capital_semanas s
-       JOIN capital_participaciones p ON p.semana_id = s.id
-   GROUP BY s.id ORDER BY s.fecha_inicio DESC LIMIT 1'
-)->fetch();
+$db    = getDB();
+$dias  = 30;
+$desde = date('Y-m-d', strtotime("-$dias days"));
 
 $lectura = $db->query('SELECT MAX(fecha) FROM snapshots_jugador')->fetchColumn();
 
+// ── Capital: cada fin de semana con desglose es una oportunidad ──
+$capital = [];
+$capOportunidades = (int) $db->query(
+    "SELECT COUNT(DISTINCT cs.id) FROM capital_semanas cs
+       JOIN capital_participaciones cp ON cp.semana_id = cs.id
+      WHERE cs.fecha_inicio >= '$desde'"
+)->fetchColumn();
+foreach ($db->query(
+    "SELECT cp.jugador_id, SUM(cp.ataques_realizados > 0) participo, SUM(cp.oro_aportado) oro
+       FROM capital_participaciones cp
+       JOIN capital_semanas cs ON cs.id = cp.semana_id
+      WHERE cs.fecha_inicio >= '$desde'
+   GROUP BY cp.jugador_id"
+) as $r) {
+    $capital[(int) $r['jugador_id']] = ['participo' => (int) $r['participo'], 'oro' => (int) $r['oro']];
+}
+
+// ── Guerras: solo cuentan para quien fue convocado al mapa ──
+$guerra = [];
+foreach ($db->query(
+    "SELECT gp.jugador_id, COUNT(*) convocado,
+            SUM(gp.ataque1_estrellas IS NOT NULL OR gp.ataque2_estrellas IS NOT NULL) participo,
+            SUM(COALESCE(gp.ataque1_estrellas,0) + COALESCE(gp.ataque2_estrellas,0)) estrellas
+       FROM guerra_participaciones gp
+       JOIN guerras g ON g.id = gp.guerra_id
+      WHERE g.fecha >= '$desde'
+   GROUP BY gp.jugador_id"
+) as $r) {
+    $guerra[(int) $r['jugador_id']] = [
+        'convocado' => (int) $r['convocado'],
+        'participo' => (int) $r['participo'],
+        'estrellas' => (int) $r['estrellas'],
+    ];
+}
+$guerrasEnVentana = (int) $db->query("SELECT COUNT(*) FROM guerras WHERE fecha >= '$desde'")->fetchColumn();
+$guerrasConDetalle = (int) $db->query(
+    "SELECT COUNT(DISTINCT g.id) FROM guerras g
+       JOIN guerra_participaciones gp ON gp.guerra_id = g.id
+      WHERE g.fecha >= '$desde'"
+)->fetchColumn();
+
+// ── CWL: solo cuenta para quien entró al roster ──
+$cwl = [];
+foreach ($db->query(
+    "SELECT p.jugador_id, p.ataques, p.estrellas
+       FROM cwl_participaciones p
+       JOIN cwl_temporadas t ON t.id = p.temporada_id
+      WHERE CONCAT(t.mes, '-01') >= DATE_SUB('$desde', INTERVAL 1 MONTH)"
+) as $r) {
+    $cwl[(int) $r['jugador_id']] = ['ataques' => (int) $r['ataques'], 'estrellas' => (int) $r['estrellas']];
+}
+$hayCwl = (bool) $cwl;
+
+// ── Juegos del Clan: diferencia del acumulado entre dos lecturas ──
+$juegos = [];
+$fechasSnap = $db->query("SELECT DISTINCT fecha FROM snapshots_jugador WHERE fecha >= '$desde' ORDER BY fecha")->fetchAll(PDO::FETCH_COLUMN);
+$hayJuegos = count($fechasSnap) >= 2;
+if ($hayJuegos) {
+    $stmt = $db->prepare(
+        'SELECT ini.jugador_id, (fin.acum_juegos_puntos - ini.acum_juegos_puntos) puntos
+           FROM snapshots_jugador ini
+           JOIN snapshots_jugador fin ON fin.jugador_id = ini.jugador_id AND fin.fecha = ?
+          WHERE ini.fecha = ? AND ini.acum_juegos_puntos IS NOT NULL AND fin.acum_juegos_puntos IS NOT NULL'
+    );
+    $stmt->execute([end($fechasSnap), $fechasSnap[0]]);
+    foreach ($stmt as $r) {
+        $juegos[(int) $r['jugador_id']] = (int) $r['puntos'];
+    }
+}
+
+// ── Jugadores activos con su última lectura ──
 $stmt = $db->prepare(
-    'SELECT j.id, j.nombre_juego, j.rol_clan,
-            s.th_nivel, s.donaciones, s.donaciones_recibidas, s.acum_guerra_estrellas,
-            cw.estrellas AS cwl_estrellas, cw.ataques AS cwl_ataques,
-            cp.oro_aportado AS cap_oro, cp.ataques_realizados AS cap_ataques
+    'SELECT j.id, j.nombre_juego, j.rol_clan, s.th_nivel, s.donaciones, s.acum_guerra_estrellas
        FROM jugadores j
-       LEFT JOIN snapshots_jugador s        ON s.jugador_id  = j.id AND s.fecha = :lectura
-       LEFT JOIN cwl_participaciones cw     ON cw.jugador_id = j.id AND cw.temporada_id = :cwl
-       LEFT JOIN capital_participaciones cp ON cp.jugador_id = j.id AND cp.semana_id = :cap
+       LEFT JOIN snapshots_jugador s ON s.jugador_id = j.id AND s.fecha = ?
       WHERE j.activo = 1'
 );
-$stmt->execute([
-    'lectura' => $lectura,
-    'cwl'     => $cwlTemp['id'] ?? 0,
-    'cap'     => $capSemana['id'] ?? 0,
-]);
+$stmt->execute([$lectura]);
 $jugadores = $stmt->fetchAll();
 
-$hayCwl     = (bool) ($cwlTemp['id'] ?? null);
-$hayCapital = (bool) ($capSemana['id'] ?? null);
-
 foreach ($jugadores as &$j) {
-    $arenas = 0;   // en cuántas pudo participar
-    $aporta = 0;   // en cuántas participó
+    $id = (int) $j['id'];
+    $arenas = $aporta = 0;
+    $detalle = [];
 
-    // El capital está abierto a todo el clan: no jugarlo es decisión propia.
-    if ($hayCapital) {
+    // Capital: abierto a todo el clan, no jugarlo es decisión propia.
+    if ($capOportunidades > 0) {
         $arenas++;
-        if ((int) ($j['cap_ataques'] ?? 0) > 0) {
-            $aporta++;
-        }
+        $p = $capital[$id]['participo'] ?? 0;
+        if ($p > 0) { $aporta++; }
+        $detalle['capital'] = ['de' => $capOportunidades, 'hizo' => $p, 'tuvo' => true];
     }
 
-    // La CWL solo cuenta para quien entró al roster.
-    $enRosterCwl = $hayCwl && $j['cwl_ataques'] !== null;
-    if ($enRosterCwl) {
+    // Guerras: solo si lo convocaron.
+    $conv = $guerra[$id]['convocado'] ?? 0;
+    if ($conv > 0) {
         $arenas++;
-        if ((int) $j['cwl_ataques'] > 0) {
-            $aporta++;
-        }
+        $p = $guerra[$id]['participo'] ?? 0;
+        if ($p > 0) { $aporta++; }
+        $detalle['guerra'] = ['de' => $conv, 'hizo' => $p, 'tuvo' => true];
+    } else {
+        $detalle['guerra'] = ['tuvo' => false];
     }
 
-    $dono = (int) ($j['donaciones'] ?? 0) >= MINIMO_DONACIONES;
+    // CWL: solo si entró al roster.
+    if (isset($cwl[$id])) {
+        $arenas++;
+        if ($cwl[$id]['ataques'] > 0) { $aporta++; }
+        $detalle['cwl'] = ['de' => 7, 'hizo' => $cwl[$id]['ataques'], 'tuvo' => true];
+    } else {
+        $detalle['cwl'] = ['tuvo' => false];
+    }
 
-    // Historia acumulada de por vida. Sirve para no confundir a quien
-    // nunca ha aportado con el veterano que tuvo una semana tranquila.
-    $historia = (int) ($j['acum_guerra_estrellas'] ?? 0);
+    // Juegos del Clan: abiertos a todos.
+    if ($hayJuegos) {
+        $arenas++;
+        $pts = $juegos[$id] ?? 0;
+        if ($pts > 0) { $aporta++; }
+        $detalle['juegos'] = ['puntos' => $pts, 'tuvo' => true];
+    } else {
+        $detalle['juegos'] = ['tuvo' => false];
+    }
 
-    $j['arenas']      = $arenas;
-    $j['aporta']      = $aporta;
-    $j['enRosterCwl'] = $enRosterCwl;
-    $j['dono']        = $dono;
-    $j['historia']    = $historia;
-    $j['veterano']    = $historia >= VETERANO_ESTRELLAS;
-    $j['cwl_prom']    = (int) ($j['cwl_ataques'] ?? 0) > 0
-        ? round((int) $j['cwl_estrellas'] / (int) $j['cwl_ataques'], 2)
-        : null;
+    $j['arenas']   = $arenas;
+    $j['aporta']   = $aporta;
+    $j['detalle']  = $detalle;
+    $j['historia'] = (int) ($j['acum_guerra_estrellas'] ?? 0);
+    $j['cwlProm']  = ($cwl[$id]['ataques'] ?? 0) > 0
+        ? round($cwl[$id]['estrellas'] / $cwl[$id]['ataques'], 2) : null;
 
-    // Sin participación en el periodo medido. Ojo: es UN periodo, no un
-    // patrón. Las donaciones quedan fuera del criterio porque se
-    // reinician cada mes y ahora mismo solo 3 de 29 superarían cualquier
-    // umbral razonable: incluirlas marcaría a casi todos.
-    $j['sinParticipar'] = $arenas > 0 && $aporta === 0;
-
-    // Juega todo: participó en cada arena que tuvo disponible.
+    $j['expulsar'] = $arenas > 0 && $aporta === 0;
     $j['completo'] = $arenas >= 2 && $aporta === $arenas;
 }
 unset($j);
 
-// Se ordenan por historia ascendente: arriba quedan los que ni
-// participaron ahora ni han aportado nunca, que son los candidatos
-// reales. Los veteranos con historial caen al fondo de la lista.
-$nulos = array_filter($jugadores, fn($j) => $j['sinParticipar']);
-usort($nulos, fn($a, $b) => [$a['historia'], (int) ($a['donaciones'] ?? 0)]
-                        <=> [$b['historia'], (int) ($b['donaciones'] ?? 0)]);
+// Arriba los que menos historia tienen: son los candidatos reales.
+$expulsar = array_filter($jugadores, fn($j) => $j['expulsar']);
+usort($expulsar, fn($a, $b) => $a['historia'] <=> $b['historia']);
 
-$completos = array_filter($jugadores, fn($j) => $j['completo']);
-usort($completos, fn($a, $b) => ($b['cwl_prom'] ?? 0) <=> ($a['cwl_prom'] ?? 0));
+// Los mejores: más arenas cubiertas y mejor rendimiento en guerra.
+$mejores = array_filter($jugadores, fn($j) => $j['completo']);
+usort($mejores, fn($a, $b) => [$b['arenas'], $b['cwlProm'] ?? 0] <=> [$a['arenas'], $a['cwlProm'] ?? 0]);
 
-$parciales = array_filter($jugadores, fn($j) => !$j['sinParticipar'] && !$j['completo']);
+$parciales = array_filter($jugadores, fn($j) => !$j['expulsar'] && !$j['completo']);
 usort($parciales, fn($a, $b) => [$a['aporta'], $a['arenas']] <=> [$b['aporta'], $b['arenas']]);
 
 $rolBadge = ['lider'=>'badge-gold','colider'=>'badge-purple','veterano'=>'badge-blue','miembro'=>'badge-muted'];
@@ -134,7 +178,7 @@ require __DIR__ . '/includes/header.php';
 <div class="ct-page-header">
     <h1><i class="bi bi-clipboard-data-fill"></i> Decisiones</h1>
     <span class="text-muted" style="font-size:.85rem">
-        <?= $lectura ? 'Lectura del ' . date('d/m/Y', strtotime((string) $lectura)) : 'Sin lecturas' ?>
+        Últimos <?= $dias ?> días<?= $lectura ? ' · lectura del ' . date('d/m/Y', strtotime((string) $lectura)) : '' ?>
     </span>
 </div>
 
@@ -142,149 +186,145 @@ require __DIR__ . '/includes/header.php';
     <div class="empty-state"><div class="empty-icon">📊</div><p>Sin jugadores activos todavía.</p></div>
 <?php else: ?>
 
-<div class="row g-3 mb-4">
-    <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon">👥</div><div class="stat-value"><?= count($jugadores) ?></div><div class="stat-label">En el clan</div></div></div>
-    <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon">🚫</div><div class="stat-value text-danger"><?= count($nulos) ?></div><div class="stat-label">Sin participar</div></div></div>
-    <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon">🏅</div><div class="stat-value text-success"><?= count($completos) ?></div><div class="stat-label">Juegan todo</div></div></div>
-    <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon">◐</div><div class="stat-value"><?= count($parciales) ?></div><div class="stat-label">Participan a medias</div></div></div>
+<!-- Qué se pudo medir en la ventana -->
+<div class="card mb-4">
+    <div class="card-body py-2 d-flex flex-wrap gap-3" style="font-size:.85rem">
+        <span><i class="bi bi-building-fill text-<?= $capOportunidades ? 'success' : 'muted' ?>"></i>
+            Capital: <strong><?= $capOportunidades ?></strong> fin<?= $capOportunidades === 1 ? '' : 'es' ?> de semana con detalle</span>
+        <span><i class="bi bi-lightning-fill text-<?= $guerrasConDetalle ? 'success' : 'muted' ?>"></i>
+            Guerras: <strong><?= $guerrasConDetalle ?></strong> de <?= $guerrasEnVentana ?> con detalle por jugador</span>
+        <span><i class="bi bi-trophy-fill text-<?= $hayCwl ? 'success' : 'muted' ?>"></i>
+            CWL: <strong><?= $hayCwl ? 'sí' : 'no' ?></strong></span>
+        <span><i class="bi bi-controller text-<?= $hayJuegos ? 'success' : 'muted' ?>"></i>
+            Juegos: <strong><?= $hayJuegos ? count($fechasSnap) . ' lecturas' : 'faltan lecturas' ?></strong></span>
+    </div>
 </div>
 
-<!-- ── Para sacar ─────────────────────────────────────────────── -->
-<div class="card mb-4" style="border-left:3px solid var(--ct-red-text)">
-    <div class="card-header"><i class="bi bi-person-x-fill text-danger"></i> Sin participación en el último periodo</div>
-    <?php if (!$nulos): ?>
-        <div class="card-body text-muted">Todos participaron en algún frente.</div>
-    <?php else: ?>
-    <div class="alert alert-warning m-3 mb-0">
-        <i class="bi bi-exclamation-triangle-fill"></i>
-        <strong>Esto es un periodo, no un patrón.</strong>
-        Solo hay un fin de semana de capital y una CWL medidos, así que faltar una vez basta para
-        aparecer aquí. Los de arriba, sin historia acumulada, son los candidatos reales; los de abajo
-        son veteranos que probablemente solo tuvieron una semana tranquila.
-        Conforme se acumulen semanas esta lista se vuelve confiable por sí sola.
+<div class="row g-3">
+    <!-- ── IZQUIERDA: expulsar ─────────────────────────────────── -->
+    <div class="col-lg-6">
+        <div class="card h-100" style="border-left:3px solid var(--ct-red-text)">
+            <div class="card-header">
+                <i class="bi bi-person-x-fill text-danger"></i> Expulsar
+                <span class="badge badge-red ms-1"><?= count($expulsar) ?></span>
+            </div>
+            <div class="card-body py-2">
+                <small class="text-muted">Cero participación en todo lo que tuvieron disponible durante el mes.</small>
+            </div>
+            <?php if (!$expulsar): ?>
+                <div class="card-body text-muted pt-0">Nadie quedó en cero absoluto.</div>
+            <?php else: ?>
+            <div class="table-responsive"><table class="table table-hover mb-0">
+                <thead><tr><th>Jugador</th><th class="text-center">Capital</th><th class="text-center">Guerra</th><th class="text-center">CWL</th><th class="text-center">Juegos</th><th class="text-center">Historia</th></tr></thead>
+                <tbody>
+                <?php foreach ($expulsar as $j): $d = $j['detalle']; ?>
+                    <tr>
+                        <td>
+                            <strong class="text-white"><?= clean($j['nombre_juego']) ?></strong>
+                            <div><small class="text-muted"><?= $j['th_nivel'] ? 'TH' . (int) $j['th_nivel'] : '' ?></small></div>
+                        </td>
+                        <td class="text-center"><?= $d['capital']['tuvo'] ? '<span class="badge badge-red">0 de ' . $d['capital']['de'] . '</span>' : '<span class="text-muted">—</span>' ?></td>
+                        <td class="text-center"><?= $d['guerra']['tuvo'] ? '<span class="badge badge-red">0 de ' . $d['guerra']['de'] . '</span>' : '<span class="text-muted">no convocado</span>' ?></td>
+                        <td class="text-center"><?= $d['cwl']['tuvo'] ? '<span class="badge badge-red">0/7</span>' : '<span class="text-muted">no entró</span>' ?></td>
+                        <td class="text-center"><?= $d['juegos']['tuvo'] ? '<span class="badge badge-red">0</span>' : '<span class="text-muted">—</span>' ?></td>
+                        <td class="text-center">
+                            <span class="<?= $j['historia'] >= 500 ? 'badge badge-blue' : 'text-muted' ?>"><?= number_format($j['historia']) ?> ⭐</span>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table></div>
+            <div class="card-body pt-2">
+                <small class="text-muted">
+                    La columna Historia son estrellas de guerra de por vida. Los de arriba, sin historia,
+                    son los candidatos claros; uno con miles de estrellas merece preguntarle antes de sacarlo.
+                </small>
+            </div>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <!-- ── DERECHA: los mejores ────────────────────────────────── -->
+    <div class="col-lg-6">
+        <div class="card h-100" style="border-left:3px solid var(--ct-green-text)">
+            <div class="card-header">
+                <i class="bi bi-shield-fill-check text-success"></i> Mejores jugadores
+                <span class="badge badge-green ms-1"><?= count($mejores) ?></span>
+            </div>
+            <div class="card-body py-2">
+                <small class="text-muted">Participaron en todos los frentes que tuvieron disponibles. Los primeros para armar guerra.</small>
+            </div>
+            <?php if (!$mejores): ?>
+                <div class="card-body text-muted pt-0">Nadie cubrió todas sus arenas.</div>
+            <?php else: ?>
+            <div class="table-responsive"><table class="table table-hover mb-0">
+                <thead><tr><th class="text-center">#</th><th>Jugador</th><th class="text-center">Capital</th><th class="text-center">Guerra</th><th class="text-center">CWL</th><th class="text-center">⭐/ataque</th></tr></thead>
+                <tbody>
+                <?php foreach ($mejores as $i => $j): $d = $j['detalle']; ?>
+                    <tr>
+                        <td class="text-center text-muted"><?= $i + 1 ?></td>
+                        <td>
+                            <strong class="text-white"><?= clean($j['nombre_juego']) ?></strong>
+                            <div><small class="text-muted"><?= $j['th_nivel'] ? 'TH' . (int) $j['th_nivel'] : '' ?></small></div>
+                        </td>
+                        <td class="text-center"><?= $d['capital']['tuvo'] ? '<span class="badge badge-green">' . $d['capital']['hizo'] . ' de ' . $d['capital']['de'] . '</span>' : '<span class="text-muted">—</span>' ?></td>
+                        <td class="text-center"><?= $d['guerra']['tuvo'] ? '<span class="badge badge-green">' . $d['guerra']['hizo'] . ' de ' . $d['guerra']['de'] . '</span>' : '<span class="text-muted">—</span>' ?></td>
+                        <td class="text-center"><?= $d['cwl']['tuvo'] ? '<span class="badge badge-green">' . $d['cwl']['hizo'] . '/7</span>' : '<span class="text-muted">—</span>' ?></td>
+                        <td class="text-center">
+                            <?php if ($j['cwlProm'] !== null): ?>
+                                <span class="badge <?= $j['cwlProm'] >= 2.5 ? 'badge-green' : ($j['cwlProm'] >= 2 ? 'badge-gold' : 'badge-muted') ?>"><?= $j['cwlProm'] ?></span>
+                            <?php else: ?><span class="text-muted">—</span><?php endif; ?>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table></div>
+            <div class="card-body pt-2">
+                <small class="text-muted">
+                    Estrellas por ataque mide calidad, no esfuerzo: arriba de 2.5 destruye casi todo lo que toca.
+                </small>
+            </div>
+            <?php endif; ?>
+        </div>
+    </div>
+</div>
+
+<!-- ── Zona gris ──────────────────────────────────────────────── -->
+<div class="card mt-3">
+    <div class="card-header">
+        <i class="bi bi-hourglass-split text-warning"></i> Participan a medias
+        <span class="badge badge-gold ms-1"><?= count($parciales) ?></span>
+    </div>
+    <div class="card-body py-2">
+        <small class="text-muted">Aportan en algunos frentes pero no en todos. Es la lista a vigilar el mes que viene.</small>
     </div>
     <div class="table-responsive"><table class="table table-hover mb-0">
-        <thead><tr>
-            <th>Jugador</th><th class="text-center">TH</th>
-            <th class="text-center">Capital</th><th class="text-center">CWL</th>
-            <th class="text-center">Donaciones</th><th class="text-center">Historia en el juego</th>
-        </tr></thead>
+        <thead><tr><th>Jugador</th><th class="text-center">Cubrió</th><th class="text-center">Capital</th><th class="text-center">Guerra</th><th class="text-center">CWL</th><th class="text-center">Juegos</th><th class="text-center">Donaciones</th></tr></thead>
         <tbody>
-        <?php foreach ($nulos as $j): ?>
+        <?php foreach ($parciales as $j): $d = $j['detalle']; ?>
             <tr>
                 <td>
                     <strong class="text-white"><?= clean($j['nombre_juego']) ?></strong>
                     <span class="badge <?= $rolBadge[$j['rol_clan']] ?? 'badge-muted' ?> ms-1"><?= ucfirst($j['rol_clan']) ?></span>
                 </td>
-                <td class="text-center"><?= $j['th_nivel'] ? 'TH' . (int) $j['th_nivel'] : '—' ?></td>
-                <td class="text-center"><span class="badge badge-red">No jugó</span></td>
-                <td class="text-center">
-                    <?php if ($j['enRosterCwl']): ?>
-                        <span class="badge badge-red">0 de 7</span>
-                    <?php else: ?>
-                        <span class="text-muted">No entró</span>
-                    <?php endif; ?>
-                </td>
-                <td class="text-center <?= $j['dono'] ? 'text-success' : 'text-muted' ?>"><?= number_format((int) ($j['donaciones'] ?? 0)) ?></td>
-                <td class="text-center">
-                    <?php if ($j['veterano']): ?>
-                        <span class="badge badge-blue" title="Estrellas de guerra de por vida"><?= number_format($j['historia']) ?> ⭐</span>
-                    <?php else: ?>
-                        <span class="text-muted"><?= number_format($j['historia']) ?> ⭐</span>
-                    <?php endif; ?>
-                </td>
-            </tr>
-        <?php endforeach; ?>
-        </tbody>
-    </table></div>
-    <?php endif; ?>
-</div>
-
-<!-- ── Para meter a guerra ────────────────────────────────────── -->
-<div class="card mb-4" style="border-left:3px solid var(--ct-green-text)">
-    <div class="card-header"><i class="bi bi-shield-fill-check text-success"></i> Juegan todo — material para guerra</div>
-    <?php if (!$completos): ?>
-        <div class="card-body text-muted">Nadie participó en todas las arenas disponibles.</div>
-    <?php else: ?>
-    <div class="card-body py-2">
-        <small class="text-muted">Participaron en cada frente que tuvieron disponible. Ordenados por estrellas por ataque, que mide calidad y no solo esfuerzo.</small>
-    </div>
-    <div class="table-responsive"><table class="table table-hover mb-0">
-        <thead><tr>
-            <th class="text-center">#</th><th>Jugador</th><th class="text-center">TH</th>
-            <th class="text-center">Estrellas por ataque</th><th class="text-center">CWL</th>
-            <th class="text-center">Capital</th><th class="text-center">Donadas</th>
-        </tr></thead>
-        <tbody>
-        <?php foreach ($completos as $i => $j): ?>
-            <tr>
-                <td class="text-center text-muted"><?= $i + 1 ?></td>
-                <td><strong class="text-white"><?= clean($j['nombre_juego']) ?></strong></td>
-                <td class="text-center"><?= $j['th_nivel'] ? 'TH' . (int) $j['th_nivel'] : '—' ?></td>
-                <td class="text-center">
-                    <?php if ($j['cwl_prom'] !== null): ?>
-                        <span class="badge <?= $j['cwl_prom'] >= 2.5 ? 'badge-green' : ($j['cwl_prom'] >= 2 ? 'badge-gold' : 'badge-muted') ?>"><?= $j['cwl_prom'] ?></span>
-                    <?php else: ?><span class="text-muted">—</span><?php endif; ?>
-                </td>
-                <td class="text-center"><?= $j['cwl_ataques'] !== null ? (int) $j['cwl_ataques'] . '/7' : '—' ?></td>
-                <td class="text-center"><?= (int) ($j['cap_ataques'] ?? 0) ?> ataques</td>
-                <td class="text-center text-success"><?= number_format((int) ($j['donaciones'] ?? 0)) ?></td>
-            </tr>
-        <?php endforeach; ?>
-        </tbody>
-    </table></div>
-    <?php endif; ?>
-</div>
-
-<!-- ── Zona gris ──────────────────────────────────────────────── -->
-<div class="card mb-4">
-    <div class="card-header"><i class="bi bi-hourglass-split text-warning"></i> Participan a medias</div>
-    <div class="card-body py-2">
-        <small class="text-muted">Aportan en algunos frentes pero no en todos. Si repiten el patrón, bajan al grupo de arriba.</small>
-    </div>
-    <div class="table-responsive"><table class="table table-hover mb-0">
-        <thead><tr>
-            <th>Jugador</th><th class="text-center">Participación</th>
-            <th class="text-center">Capital</th><th class="text-center">CWL</th><th class="text-center">Donaciones</th>
-        </tr></thead>
-        <tbody>
-        <?php foreach ($parciales as $j): ?>
-            <tr>
-                <td><strong class="text-white"><?= clean($j['nombre_juego']) ?></strong></td>
-                <td class="text-center">
-                    <span class="badge <?= $j['arenas'] && $j['aporta'] === $j['arenas'] ? 'badge-green' : ((int) $j['aporta'] ? 'badge-gold' : 'badge-red') ?>">
-                        <?= (int) $j['aporta'] ?> de <?= (int) $j['arenas'] ?>
-                    </span>
-                </td>
-                <td class="text-center">
-                    <?php if ($j['cap_ataques'] === null): ?>
-                        <span class="text-danger">No jugó</span>
-                    <?php else: ?>
-                        <?= (int) $j['cap_ataques'] ?> ataques
-                    <?php endif; ?>
-                </td>
-                <td class="text-center">
-                    <?php if ($j['enRosterCwl']): ?>
-                        <?= (int) $j['cwl_ataques'] ?>/7
-                    <?php else: ?>
-                        <span class="text-muted">No entró</span>
-                    <?php endif; ?>
-                </td>
-                <td class="text-center <?= $j['dono'] ? 'text-success' : 'text-muted' ?>"><?= number_format((int) ($j['donaciones'] ?? 0)) ?></td>
+                <td class="text-center"><span class="badge <?= $j['aporta'] ? 'badge-gold' : 'badge-red' ?>"><?= $j['aporta'] ?> de <?= $j['arenas'] ?></span></td>
+                <td class="text-center"><?= $d['capital']['tuvo'] ? $d['capital']['hizo'] . ' de ' . $d['capital']['de'] : '<span class="text-muted">—</span>' ?></td>
+                <td class="text-center"><?= $d['guerra']['tuvo'] ? $d['guerra']['hizo'] . ' de ' . $d['guerra']['de'] : '<span class="text-muted">no convocado</span>' ?></td>
+                <td class="text-center"><?= $d['cwl']['tuvo'] ? $d['cwl']['hizo'] . '/7' : '<span class="text-muted">no entró</span>' ?></td>
+                <td class="text-center"><?= $d['juegos']['tuvo'] ? number_format($d['juegos']['puntos']) : '<span class="text-muted">—</span>' ?></td>
+                <td class="text-center text-muted"><?= number_format((int) ($j['donaciones'] ?? 0)) ?></td>
             </tr>
         <?php endforeach; ?>
         </tbody>
     </table></div>
 </div>
 
-<div class="text-muted" style="font-size:.85rem">
-    <strong>Cómo se calcula.</strong>
-    Se miden las arenas donde el jugador pudo aportar y queda registro en la API:
-    el asalto al capital del <?= $capSemana ? date('d/m/Y', strtotime($capSemana['fecha_inicio'])) : '—' ?>
-    y la CWL de <?= $cwlTemp ? clean((string) $cwlTemp['mes']) : '—' ?>.
-    El capital cuenta para todos porque está abierto a todo el clan; la CWL solo para quien entró al roster,
-    ya que esa selección la haces tú y no sería justo cobrársela al jugador.
-    Las donaciones se muestran como contexto pero no deciden la clasificación: se reinician cada mes y hoy solo 3 de 29 jugadores superarían cualquier umbral razonable, así que incluirlas marcaría a casi todo el clan.
+<div class="text-muted mt-3" style="font-size:.85rem">
+    <strong>Cómo se decide.</strong>
+    Se miran cuatro actividades del último mes: asaltos al capital, guerras, CWL y Juegos del Clan.
+    Cada una cuenta solo si el jugador tuvo la oportunidad: el capital y los juegos están abiertos a
+    todo el clan, pero la guerra y la CWL dependen de que tú lo convoques, y no sería justo cobrarle
+    una ausencia que no eligió. Aparece en Expulsar quien quedó en cero en todas las que sí tuvo.
 </div>
 
 <?php endif; ?>

@@ -192,6 +192,104 @@ function cocImportarGuerras(int $limite = 50): array
 }
 
 /**
+ * Captura la guerra en curso con su detalle por jugador.
+ *
+ * Es la única ventana para saber quién atacó en una guerra normal: el
+ * historial solo guarda totales del clan. Si nadie mira mientras la
+ * guerra está viva, ese dato se pierde.
+ *
+ * Se registra desde la fase de preparación, cuando todavía no hay
+ * ataques pero ya se sabe a quién metieron al mapa. Esa distinción es la
+ * que permite detectar al que fue convocado y no atacó.
+ *
+ * @return array{estado:string,jugadores:int}
+ * @throws CocApiException
+ */
+function cocImportarGuerraActual(): array
+{
+    $db = getDB();
+    $w  = cocGet('/clans/' . rawurlencode(cocNormalizarTag(COC_CLAN_TAG)) . '/currentwar');
+
+    $estado = (string) ($w['state'] ?? 'notInWar');
+    if (!in_array($estado, ['preparation', 'inWar', 'warEnded'], true)) {
+        return ['estado' => $estado, 'jugadores' => 0];
+    }
+
+    $apiId = (string) ($w['endTime'] ?? '');
+    if ($apiId === '') {
+        return ['estado' => $estado, 'jugadores' => 0];
+    }
+
+    $mios   = $w['clan'] ?? [];
+    $rival  = $w['opponent'] ?? [];
+    $result = 'en_curso';
+    if ($estado === 'warEnded') {
+        $ne = (int) ($mios['stars'] ?? 0);
+        $re = (int) ($rival['stars'] ?? 0);
+        $nd = (float) ($mios['destructionPercentage'] ?? 0);
+        $rd = (float) ($rival['destructionPercentage'] ?? 0);
+        $result = $ne > $re ? 'victoria' : ($ne < $re ? 'derrota' : ($nd > $rd ? 'victoria' : ($nd < $rd ? 'derrota' : 'empate')));
+    }
+
+    $busca = $db->prepare('SELECT id FROM guerras WHERE api_id = ?');
+    $busca->execute([$apiId]);
+    $gid = $busca->fetchColumn();
+
+    $datos = [
+        date('Y-m-d', strtotime(substr($apiId, 0, 8))),
+        (string) ($rival['name'] ?? 'Desconocido'),
+        (int) ($w['teamSize'] ?? 0),
+        $result,
+        (int) ($mios['stars'] ?? 0),
+        round((float) ($mios['destructionPercentage'] ?? 0), 2),
+        (int) ($rival['stars'] ?? 0),
+        round((float) ($rival['destructionPercentage'] ?? 0), 2),
+    ];
+
+    if ($gid) {
+        $db->prepare(
+            'UPDATE guerras SET fecha=?, oponente=?, tamano=?, resultado=?,
+                    estrellas_clan=?, destruccion_clan=?, estrellas_oponente=?, destruccion_oponente=?
+              WHERE id=?'
+        )->execute([...$datos, $gid]);
+    } else {
+        $db->prepare(
+            'INSERT INTO guerras (fecha, oponente, tamano, resultado,
+                                  estrellas_clan, destruccion_clan, estrellas_oponente, destruccion_oponente, api_id)
+             VALUES (?,?,?,?,?,?,?,?,?)'
+        )->execute([...$datos, $apiId]);
+        $gid = (int) $db->lastInsertId();
+    }
+
+    $ins = $db->prepare(
+        'INSERT INTO guerra_participaciones
+            (guerra_id, jugador_id, ataque1_estrellas, ataque1_porcentaje, ataque2_estrellas, ataque2_porcentaje)
+         VALUES (?,?,?,?,?,?)
+         ON DUPLICATE KEY UPDATE
+            ataque1_estrellas=VALUES(ataque1_estrellas), ataque1_porcentaje=VALUES(ataque1_porcentaje),
+            ataque2_estrellas=VALUES(ataque2_estrellas), ataque2_porcentaje=VALUES(ataque2_porcentaje)'
+    );
+
+    $n = 0;
+    foreach ($mios['members'] ?? [] as $m) {
+        $jid = cocAsegurarJugador($m['tag'], $m['name']);
+        $a   = $m['attacks'] ?? [];
+        // Sin ataque queda en NULL, que es distinto de cero estrellas:
+        // NULL significa que no atacó, 0 que atacó y falló.
+        $ins->execute([
+            (int) $gid, $jid,
+            isset($a[0]) ? (int) $a[0]['stars'] : null,
+            isset($a[0]) ? round((float) $a[0]['destructionPercentage'], 2) : null,
+            isset($a[1]) ? (int) $a[1]['stars'] : null,
+            isset($a[1]) ? round((float) $a[1]['destructionPercentage'], 2) : null,
+        ]);
+        $n++;
+    }
+
+    return ['estado' => $estado, 'jugadores' => $n];
+}
+
+/**
  * Importa la CWL de la temporada corriente, con el detalle por jugador.
  * Supercell solo conserva la temporada en curso, así que esto tiene que
  * pasar antes de que arranque la siguiente.
