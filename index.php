@@ -215,12 +215,12 @@ require __DIR__ . '/includes/header.php';
 <div class="row g-3">
     <!-- ── IZQUIERDA: expulsar ─────────────────────────────────── -->
     <div class="col-lg-6">
-        <div class="card h-100" style="border-left:3px solid var(--ct-red-text)">
+        <div class="card" style="border-left:3px solid var(--ct-red-text)">
             <div class="card-header">
                 <i class="bi bi-person-x-fill text-danger"></i> Expulsar
                 <span class="badge badge-red ms-1"><?= count($expulsar) ?></span>
             </div>
-            <div class="card-body py-2">
+            <div class="card-body py-2 flex-grow-0">
                 <small class="text-muted">Cero participación en todo lo que tuvieron disponible durante el mes.</small>
             </div>
             <?php if (!$expulsar): ?>
