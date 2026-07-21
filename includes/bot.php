@@ -2,52 +2,69 @@
 declare(strict_types=1);
 
 /**
- * Punto de entrada de Telegram: el bot como asistente de los
- * administradores del clan.
+ * El bot: comandos para los administradores del clan.
  *
- * Es público por necesidad, porque Telegram tiene que alcanzarlo sin
- * sesión. Se protege con un secreto compartido que Telegram manda en
- * una cabecera y que se fija al registrar el webhook.
+ * Pregunta a Telegram en vez de exponer un endpoint público. El webhook
+ * no funcionaba: el sitio está detrás de Cloudflare, que interfiere con
+ * las peticiones de Telegram, y el bot quedaba mudo sin error visible.
  *
- * Además del secreto hay una lista blanca: el bot solo contesta a
- * administradores autorizados. Cualquiera puede encontrar un bot por su
- * nombre y escribirle, y las estadísticas del clan no tienen por qué
- * estar abiertas a quien pase por ahí.
+ * Preguntando desaparece el problema y también la superficie de ataque,
+ * porque ya no hace falta una URL pública ni un secreto compartido. El
+ * precio es que una respuesta puede tardar lo que falte para el próximo
+ * paso del cron; con dos o tres administradores eso da igual.
  */
 
-require_once __DIR__ . '/../includes/coc_sync.php';
-require_once __DIR__ . '/../includes/telegram.php';
-require_once __DIR__ . '/../includes/resumen.php';
+require_once __DIR__ . '/coc_sync.php';
+require_once __DIR__ . '/telegram.php';
+require_once __DIR__ . '/resumen.php';
 
-$secreto = defined('TELEGRAM_WEBHOOK_SECRET') ? TELEGRAM_WEBHOOK_SECRET : '';
-$enviado = $_SERVER['HTTP_X_TELEGRAM_BOT_API_SECRET_TOKEN'] ?? '';
-
-if ($secreto === '' || !hash_equals($secreto, $enviado)) {
-    http_response_code(403);
-    exit;
-}
-
-$update = json_decode((string) file_get_contents('php://input'), true);
-if (!is_array($update)) {
-    http_response_code(400);
-    exit;
-}
-
-// Telegram reintenta si no recibe 200 pronto, así que se responde antes
-// de trabajar para no acabar procesando el mismo evento dos veces.
-http_response_code(200);
-header('Content-Length: 0');
-header('Connection: close');
-if (function_exists('fastcgi_finish_request')) {
-    fastcgi_finish_request();
-}
-
-try {
-    if (isset($update['message'])) {
-        atender($update['message']);
+/**
+ * Recoge los mensajes nuevos y los atiende.
+ *
+ * El identificador del último visto se guarda en 'ajustes': Telegram
+ * repite un mensaje hasta que se confirma, y sin esa marca el bot
+ * respondería lo mismo una y otra vez.
+ */
+function tareaBot(): string
+{
+    if (!tgConfigurado()) {
+        return 'sin configurar';
     }
-} catch (Throwable $e) {
-    error_log('Webhook Telegram: ' . $e->getMessage());
+
+    $desde = (int) (tgAjuste('telegram_offset') ?? 0);
+    $r = tgLlamar('getUpdates', [
+        'offset'          => $desde,
+        'timeout'         => 0,
+        'allowed_updates' => ['message'],
+    ]);
+
+    if (!$r || !($r['ok'] ?? false)) {
+        return 'no se pudo consultar';
+    }
+
+    $mensajes = $r['result'] ?? [];
+    if (!$mensajes) {
+        return 'sin mensajes';
+    }
+
+    $n = 0;
+    $ultimo = $desde;
+    foreach ($mensajes as $u) {
+        $ultimo = max($ultimo, (int) $u['update_id']);
+        if (isset($u['message'])) {
+            try {
+                atender($u['message']);
+                $n++;
+            } catch (Throwable $e) {
+                error_log('Bot: ' . $e->getMessage());
+            }
+        }
+    }
+
+    // Se confirma con +1 para que Telegram no los vuelva a mandar.
+    tgGuardarAjuste('telegram_offset', (string) ($ultimo + 1));
+
+    return "$n mensaje(s) atendido(s)";
 }
 
 /** @param array<string,mixed> $msg */

@@ -29,6 +29,12 @@ require_once __DIR__ . '/../includes/tareas.php';
  * hora local puede correr, para las que conviene que pasen de noche.
  */
 const TAREAS = [
+    'bot' => [
+        'cada'      => 5,
+        'desdeHora' => null,
+        'fn'        => 'tareaBot',
+        'describe'  => 'atender los comandos que llegaron por Telegram',
+    ],
     'eventos' => [
         'cada'      => 5,
         'desdeHora' => null,

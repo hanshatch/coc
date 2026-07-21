@@ -15,6 +15,7 @@ require_once __DIR__ . '/eventos.php';
 // captura fallaba con "undefined function", sin ruido porque en
 // producción los errores van al log y no a pantalla.
 require_once __DIR__ . '/resumen.php';
+require_once __DIR__ . '/bot.php';
 
 /**
  * Vigila lo que no espera al reloj: jugadores nuevos y cambios de
