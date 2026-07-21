@@ -254,13 +254,20 @@ function autorizar(array $admin, string $arg): string
              . "Antes de que le funcione, esa persona tiene que escribirme a mí primero.";
     }
 
-    getDB()->prepare(
-        'INSERT INTO telegram_admins (telegram_id, es_duenio) VALUES (?, 0)
-         ON DUPLICATE KEY UPDATE recibe_avisos = 1'
-    )->execute([(int) $arg]);
+    // El nombre ya lo sabemos de cuando intentó entrar: sin esto la
+    // lista de administradores queda con identificadores sueltos.
+    $db = getDB();
+    $stmt = $db->prepare('SELECT nombre FROM telegram_intentos WHERE telegram_id = ?');
+    $stmt->execute([(int) $arg]);
+    $nombre = $stmt->fetchColumn() ?: null;
+
+    $db->prepare(
+        'INSERT INTO telegram_admins (telegram_id, nombre, es_duenio) VALUES (?, ?, 0)
+         ON DUPLICATE KEY UPDATE recibe_avisos = 1, nombre = COALESCE(VALUES(nombre), nombre)'
+    )->execute([(int) $arg, $nombre]);
 
     tgEnviar('Te dieron acceso al asistente del clan H@TCH. Escribe /ayuda para ver qué puedo hacer.', $arg);
-    return '✅ Autorizado. Le avisé por privado.';
+    return '✅ ' . tgEscapar($nombre ?: 'Autorizado') . ' ya tiene acceso. Le avisé por privado.';
 }
 
 function listaAdmins(): string

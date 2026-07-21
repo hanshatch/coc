@@ -30,7 +30,10 @@ require_once __DIR__ . '/../includes/tareas.php';
  */
 const TAREAS = [
     'bot' => [
-        'cada'      => 5,
+        // En cada paso del cron: si espera su propio turno de 5 minutos
+        // puede desalinearse con el tick y tardar casi el doble, y un
+        // comando que no contesta en un rato se siente descompuesto.
+        'cada'      => 1,
         'desdeHora' => null,
         'fn'        => 'tareaBot',
         'describe'  => 'atender los comandos que llegaron por Telegram',
