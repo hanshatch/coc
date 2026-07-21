@@ -155,52 +155,28 @@ paso('cwl', function (): string {
     return $r['mes'] === '' ? 'sin temporada' : sprintf('temporada %s, %d jugadores', $r['mes'], $r['jugadores']);
 });
 
-// ── Limpieza del grupo ────────────────────────────────────────
-// Sin esto el grupo se llena de exmiembros: nadie se acuerda de sacar a
-// quien se fue del clan hace tres semanas.
-paso('grupo telegram', function () use ($db): string {
-    $grupo = tgConfigurado() ? tgGrupoId() : null;
-    if (!$grupo) {
-        return 'sin grupo configurado';
-    }
-
-    $fuera = $db->query(
-        'SELECT v.telegram_id, v.telegram_nombre, j.nombre_juego
-           FROM telegram_vinculos v
-           JOIN jugadores j ON j.id = v.jugador_id
-          WHERE j.activo = 0'
-    )->fetchAll();
-
-    if (!$fuera) {
-        return 'nadie que sacar';
-    }
-
-    $n = 0;
-    foreach ($fuera as $f) {
-        $tgId = (int) $f['telegram_id'];
-        tgEnviar(
-            'Saliste del clan H@TCH, así que te quito del grupo. '
-            . 'Si vuelves a entrar, solicita el ingreso de nuevo y te dejo pasar sin más trámite.',
-            (string) $tgId
-        );
-        if (tgExpulsar($grupo, $tgId)) {
-            $n++;
-        }
-        $db->prepare('DELETE FROM telegram_vinculos WHERE telegram_id = ?')->execute([$tgId]);
-    }
-
-    return "$n sacados del grupo por dejar el clan";
-});
-
 // ── Aviso por Telegram ────────────────────────────────────────
 // Se manda después de capturar, para que el resumen refleje los datos
 // de hoy y no los de ayer.
-paso('telegram', function () use ($roster): string {
-    if (!tgConfigurado() || !defined('TELEGRAM_CHAT_ID') || TELEGRAM_CHAT_ID === '') {
+paso('telegram', function () use ($db, $roster): string {
+    if (!tgConfigurado()) {
         return 'sin configurar';
     }
-    $r = resumenDiario($roster);
-    return tgEnviar($r['texto']) ? 'resumen enviado' : 'no se pudo enviar';
+
+    $destinos = $db->query('SELECT telegram_id FROM telegram_admins WHERE recibe_avisos = 1')
+                   ->fetchAll(PDO::FETCH_COLUMN);
+    if (!$destinos) {
+        return 'sin administradores que avisar';
+    }
+
+    $texto = resumenDiario($roster)['texto'];
+    $ok = 0;
+    foreach ($destinos as $chat) {
+        if (tgEnviar($texto, (string) $chat)) {
+            $ok++;
+        }
+    }
+    return "$ok de " . count($destinos) . ' avisados';
 });
 
 $estado = $errores ? (count($errores) >= 4 ? 'error' : 'parcial') : 'ok';

@@ -2,23 +2,23 @@
 declare(strict_types=1);
 
 /**
- * Punto de entrada de Telegram. Aquí llegan las solicitudes de ingreso
- * al grupo y los mensajes privados al bot.
+ * Punto de entrada de Telegram: el bot como asistente de los
+ * administradores del clan.
  *
- * Es público por necesidad: Telegram tiene que poder alcanzarlo sin
+ * Es público por necesidad, porque Telegram tiene que alcanzarlo sin
  * sesión. Se protege con un secreto compartido que Telegram manda en
- * una cabecera y que se fija al registrar el webhook, así nadie más
- * puede inyectar eventos falsos.
+ * una cabecera y que se fija al registrar el webhook.
  *
- * Todo el flujo de alta ocurre aquí sin intervención humana:
- * pide el tag, comprueba que esté en el clan, pide el token que genera
- * el juego, lo valida contra la API y aprueba o rechaza.
+ * Además del secreto hay una lista blanca: el bot solo contesta a
+ * administradores autorizados. Cualquiera puede encontrar un bot por su
+ * nombre y escribirle, y las estadísticas del clan no tienen por qué
+ * estar abiertas a quien pase por ahí.
  */
 
 require_once __DIR__ . '/../includes/coc_sync.php';
 require_once __DIR__ . '/../includes/telegram.php';
+require_once __DIR__ . '/../includes/resumen.php';
 
-// ── Autenticación del webhook ─────────────────────────────────
 $secreto = defined('TELEGRAM_WEBHOOK_SECRET') ? TELEGRAM_WEBHOOK_SECRET : '';
 $enviado = $_SERVER['HTTP_X_TELEGRAM_BOT_API_SECRET_TOKEN'] ?? '';
 
@@ -33,8 +33,8 @@ if (!is_array($update)) {
     exit;
 }
 
-// Telegram reintenta si no recibe 200 pronto. Se responde de inmediato
-// y se procesa después, para que un fallo nuestro no genere duplicados.
+// Telegram reintenta si no recibe 200 pronto, así que se responde antes
+// de trabajar para no acabar procesando el mismo evento dos veces.
 http_response_code(200);
 header('Content-Length: 0');
 header('Connection: close');
@@ -43,106 +43,16 @@ if (function_exists('fastcgi_finish_request')) {
 }
 
 try {
-    procesar($update);
+    if (isset($update['message'])) {
+        atender($update['message']);
+    }
 } catch (Throwable $e) {
     error_log('Webhook Telegram: ' . $e->getMessage());
 }
 
-/** @param array<string,mixed> $u */
-function procesar(array $u): void
+/** @param array<string,mixed> $msg */
+function atender(array $msg): void
 {
-    if (isset($u['my_chat_member'])) {
-        aprenderGrupo($u['my_chat_member']);
-        return;
-    }
-    if (isset($u['chat_join_request'])) {
-        solicitudDeIngreso($u['chat_join_request']);
-        return;
-    }
-    if (isset($u['message'])) {
-        mensajePrivado($u['message']);
-    }
-}
-
-/**
- * Cuando agregan el bot a un grupo, guarda el id para no tener que
- * configurarlo a mano.
- *
- * @param array<string,mixed> $ev
- */
-function aprenderGrupo(array $ev): void
-{
-    $chat   = $ev['chat'] ?? [];
-    $estado = $ev['new_chat_member']['status'] ?? '';
-
-    if (!in_array($chat['type'] ?? '', ['group', 'supergroup'], true)) {
-        return;
-    }
-
-    if (in_array($estado, ['administrator', 'member'], true)) {
-        tgGuardarAjuste('telegram_grupo_id', (string) $chat['id']);
-        $aviso = $estado === 'administrator'
-            ? "✅ Listo. Quedé como administrador de <b>" . tgEscapar((string) ($chat['title'] ?? 'el grupo')) . "</b> y ya puedo aprobar solicitudes."
-            : "⚠️ Me agregaron a <b>" . tgEscapar((string) ($chat['title'] ?? 'el grupo')) . "</b> pero <b>no soy administrador</b>. Sin ese permiso no puedo aprobar ni rechazar a nadie.";
-        tgEnviar($aviso);
-    }
-}
-
-/**
- * Alguien pidió entrar al grupo. Se le escribe por privado para iniciar
- * la verificación; la solicitud queda pendiente mientras tanto.
- *
- * @param array<string,mixed> $sol
- */
-function solicitudDeIngreso(array $sol): void
-{
-    $tgId  = (int) ($sol['from']['id'] ?? 0);
-    $chat  = (string) ($sol['chat']['id'] ?? '');
-    $nombre = trim((string) ($sol['from']['first_name'] ?? '') . ' ' . (string) ($sol['from']['last_name'] ?? ''));
-
-    if ($tgId === 0 || $chat === '') {
-        return;
-    }
-    tgGuardarAjuste('telegram_grupo_id', $chat);
-
-    // Si ya estaba verificado y sigue en el clan, entra directo.
-    $db   = getDB();
-    $stmt = $db->prepare(
-        'SELECT j.id FROM telegram_vinculos v JOIN jugadores j ON j.id = v.jugador_id
-          WHERE v.telegram_id = ? AND j.activo = 1'
-    );
-    $stmt->execute([$tgId]);
-    if ($stmt->fetchColumn()) {
-        tgAprobarSolicitud($chat, $tgId);
-        tgEnviar('✅ Ya estabas verificado, te dejé entrar.', (string) $tgId);
-        return;
-    }
-
-    $db->prepare(
-        'INSERT INTO telegram_conversaciones (telegram_id, paso, intentos) VALUES (?, \'espera_tag\', 0)
-         ON DUPLICATE KEY UPDATE paso = \'espera_tag\', tag_propuesto = NULL, intentos = 0'
-    )->execute([$tgId]);
-
-    tgEnviar(
-        "👋 Hola" . ($nombre ? ' ' . tgEscapar($nombre) : '') . ", soy el bot del clan <b>H@TCH</b>.\n\n"
-        . "Para dejarte entrar al grupo necesito comprobar que eres miembro del clan.\n\n"
-        . "<b>Mándame tu tag de jugador.</b> Lo encuentras en tu perfil dentro del juego, debajo de tu nombre. "
-        . "Se ve así: <code>#2ABC3DEF</code>",
-        (string) $tgId
-    );
-}
-
-/**
- * Conversación privada: recibe el tag, luego el token, y decide.
- *
- * @param array<string,mixed> $msg
- */
-function mensajePrivado(array $msg): void
-{
-    if (($msg['chat']['type'] ?? '') !== 'private') {
-        return;
-    }
-
     $tgId  = (int) ($msg['from']['id'] ?? 0);
     $texto = trim((string) ($msg['text'] ?? ''));
     if ($tgId === 0 || $texto === '') {
@@ -152,139 +62,178 @@ function mensajePrivado(array $msg): void
     $nombre = trim((string) ($msg['from']['first_name'] ?? '') . ' ' . (string) ($msg['from']['last_name'] ?? ''));
     $db     = getDB();
 
-    if ($texto === '/start' || $texto === '/ayuda') {
-        tgEnviar(
-            "Soy el bot del clan <b>H@TCH</b>.\n\n"
-            . "Si quieres entrar al grupo, primero solicita el ingreso y yo te escribo para verificarte.\n\n"
-            . "Comandos: /yo para ver con qué cuenta estás vinculado.",
-            (string) $tgId
-        );
-        return;
-    }
-
-    if ($texto === '/yo') {
-        $stmt = $db->prepare(
-            'SELECT j.nombre_juego, j.tag, j.activo FROM telegram_vinculos v
-               JOIN jugadores j ON j.id = v.jugador_id WHERE v.telegram_id = ?'
-        );
-        $stmt->execute([$tgId]);
-        $v = $stmt->fetch();
-        tgEnviar(
-            $v
-                ? "Estás vinculado a <b>" . tgEscapar((string) $v['nombre_juego']) . "</b> (<code>" . tgEscapar((string) $v['tag']) . "</code>)"
-                  . ($v['activo'] ? "\nSigues en el clan ✅" : "\n⚠️ Ya no apareces en el clan.")
-                : 'Todavía no estás vinculado a ninguna cuenta.',
-            (string) $tgId
-        );
-        return;
-    }
-
-    $stmt = $db->prepare('SELECT * FROM telegram_conversaciones WHERE telegram_id = ?');
+    $stmt = $db->prepare('SELECT * FROM telegram_admins WHERE telegram_id = ?');
     $stmt->execute([$tgId]);
-    $conv = $stmt->fetch();
+    $admin = $stmt->fetch();
 
-    if (!$conv) {
-        tgEnviar('Si quieres entrar al grupo, solicita el ingreso y te escribo para verificarte.', (string) $tgId);
+    if (!$admin) {
+        // Sin filtrar, cualquiera que dé con el bot vería el estado del
+        // clan. Se responde algo neutro para no confirmar qué es esto.
+        tgEnviar('No tienes acceso a este bot.', (string) $tgId);
         return;
     }
 
-    if ($conv['paso'] === 'espera_tag') {
-        recibirTag($tgId, $texto, $nombre);
-        return;
+    [$comando, $arg] = array_pad(explode(' ', $texto, 2), 2, '');
+    $comando = strtolower(ltrim($comando, '/'));
+
+    switch ($comando) {
+        case 'start':
+        case 'ayuda':
+        case 'help':
+            tgEnviar(ayuda((bool) $admin['es_duenio']), (string) $tgId);
+            break;
+
+        case 'resumen':
+            tgEnviar(resumenDiario()['texto'], (string) $tgId);
+            break;
+
+        case 'guerra':
+            tgEnviar(estadoGuerra(), (string) $tgId);
+            break;
+
+        case 'jugador':
+            tgEnviar(fichaJugador(trim($arg)), (string) $tgId);
+            break;
+
+        case 'autorizar':
+            tgEnviar(autorizar($admin, trim($arg)), (string) $tgId);
+            break;
+
+        case 'admins':
+            tgEnviar(listaAdmins(), (string) $tgId);
+            break;
+
+        default:
+            tgEnviar("No conozco ese comando.\n\n" . ayuda((bool) $admin['es_duenio']), (string) $tgId);
     }
-    recibirToken($tgId, $texto, (string) $conv['tag_propuesto'], $nombre);
 }
 
-function recibirTag(int $tgId, string $texto, string $nombre): void
+function ayuda(bool $duenio): string
 {
-    $db  = getDB();
-    $tag = cocNormalizarTag($texto);
-
-    $stmt = $db->prepare('SELECT id, nombre_juego FROM jugadores WHERE tag = ? AND activo = 1');
-    $stmt->execute([$tag]);
-    $jugador = $stmt->fetch();
-
-    if (!$jugador) {
-        $db->prepare('UPDATE telegram_conversaciones SET intentos = intentos + 1 WHERE telegram_id = ?')->execute([$tgId]);
-        tgEnviar(
-            "❌ No encuentro <code>" . tgEscapar($tag) . "</code> entre los miembros del clan.\n\n"
-            . "Revisa que lo hayas copiado bien. Recuerda que el tag lleva ceros, nunca la letra O.\n"
-            . "Si acabas de entrar al clan, espera a mañana: la lista se actualiza cada noche.",
-            (string) $tgId
-        );
-        return;
+    $t = "<b>Asistente del clan H@TCH</b>\n\n"
+       . "/resumen — estado del clan y quién no participa\n"
+       . "/guerra — ataques pendientes de la guerra en curso\n"
+       . "/jugador <i>nombre</i> — ficha de un jugador\n"
+       . "/admins — quién recibe avisos\n";
+    if ($duenio) {
+        $t .= "/autorizar <i>id</i> — dar acceso a otro administrador\n";
     }
-
-    // Si ese jugador ya está tomado por otra cuenta de Telegram, se corta.
-    $ocupado = $db->prepare('SELECT telegram_id FROM telegram_vinculos WHERE jugador_id = ?');
-    $ocupado->execute([(int) $jugador['id']]);
-    $duenio = $ocupado->fetchColumn();
-    if ($duenio && (int) $duenio !== $tgId) {
-        tgEnviar('❌ Esa cuenta ya está vinculada a otro Telegram. Si es un error, avísale a un colíder.', (string) $tgId);
-        return;
-    }
-
-    $db->prepare('UPDATE telegram_conversaciones SET paso = \'espera_token\', tag_propuesto = ? WHERE telegram_id = ?')
-       ->execute([$tag, $tgId]);
-
-    tgEnviar(
-        "✅ Encontré a <b>" . tgEscapar((string) $jugador['nombre_juego']) . "</b> en el clan.\n\n"
-        . "Ahora comprueba que la cuenta es tuya. Dentro de Clash of Clans:\n\n"
-        . "1️⃣ Abre <b>Ajustes</b> (el engrane)\n"
-        . "2️⃣ Entra a <b>Más ajustes</b>\n"
-        . "3️⃣ Hasta abajo busca <b>API Token</b> y tócalo\n"
-        . "4️⃣ Cópialo y pégamelo aquí\n\n"
-        . "<i>Es un código temporal que genera el propio juego. No es una contraseña y no sirve para nada más.</i>",
-        (string) $tgId
-    );
+    return $t;
 }
 
-function recibirToken(int $tgId, string $token, string $tag, string $nombre): void
+function estadoGuerra(): string
 {
     $db = getDB();
+    $g  = $db->query(
+        "SELECT * FROM guerras WHERE resultado = 'en_curso' ORDER BY fecha DESC LIMIT 1"
+    )->fetch();
 
-    $ok = false;
-    try {
-        $r  = cocVerificarToken($tag, $token);
-        $ok = $r === 'ok';
-    } catch (Throwable $e) {
-        error_log('Verificar token: ' . $e->getMessage());
-        tgEnviar('⚠️ No pude comprobarlo ahora mismo. Inténtalo en un minuto.', (string) $tgId);
-        return;
+    if (!$g) {
+        return 'No hay ninguna guerra en curso ahora mismo.';
     }
 
-    if (!$ok) {
-        $db->prepare('UPDATE telegram_conversaciones SET intentos = intentos + 1 WHERE telegram_id = ?')->execute([$tgId]);
-        tgEnviar(
-            "❌ Ese token no es válido para <code>" . tgEscapar($tag) . "</code>.\n\n"
-            . "Los tokens caducan a los pocos minutos: genera uno nuevo en el juego y mándamelo enseguida.",
-            (string) $tgId
-        );
-        return;
-    }
-
-    $stmt = $db->prepare('SELECT id, nombre_juego FROM jugadores WHERE tag = ?');
-    $stmt->execute([$tag]);
-    $jugador = $stmt->fetch();
-    if (!$jugador) {
-        return;
-    }
-
-    $db->prepare(
-        'INSERT INTO telegram_vinculos (telegram_id, jugador_id, telegram_nombre) VALUES (?,?,?)
-         ON DUPLICATE KEY UPDATE jugador_id = VALUES(jugador_id), telegram_nombre = VALUES(telegram_nombre), verificado_en = NOW()'
-    )->execute([$tgId, (int) $jugador['id'], $nombre ?: null]);
-
-    $db->prepare('DELETE FROM telegram_conversaciones WHERE telegram_id = ?')->execute([$tgId]);
-
-    $grupo = tgGrupoId();
-    if ($grupo) {
-        tgAprobarSolicitud($grupo, $tgId);
-    }
-
-    tgEnviar(
-        "🎉 Verificado. Bienvenido, <b>" . tgEscapar((string) $jugador['nombre_juego']) . "</b>.\n\n"
-        . "Ya puedes entrar al grupo. No vuelvo a pedirte el token: quedaste vinculado.",
-        (string) $tgId
+    $stmt = $db->prepare(
+        'SELECT j.nombre_juego,
+                (gp.ataque1_estrellas IS NOT NULL) + (gp.ataque2_estrellas IS NOT NULL) AS hechos,
+                COALESCE(gp.ataque1_estrellas,0) + COALESCE(gp.ataque2_estrellas,0) AS estrellas
+           FROM guerra_participaciones gp
+           JOIN jugadores j ON j.id = gp.jugador_id
+          WHERE gp.guerra_id = ?
+       ORDER BY hechos ASC, j.nombre_juego ASC'
     );
+    $stmt->execute([(int) $g['id']]);
+    $filas = $stmt->fetchAll();
+
+    if (!$filas) {
+        return 'Hay guerra contra <b>' . tgEscapar((string) $g['oponente']) . '</b> pero todavía no tengo el detalle por jugador.';
+    }
+
+    $pendientes = array_filter($filas, fn($f) => (int) $f['hechos'] < 2);
+    $l = [];
+    $l[] = '<b>⚔️ Guerra contra ' . tgEscapar((string) $g['oponente']) . '</b>';
+    $l[] = sprintf('%d–%d estrellas · %d en el mapa', (int) $g['estrellas_clan'], (int) $g['estrellas_oponente'], count($filas));
+    $l[] = '';
+
+    if (!$pendientes) {
+        $l[] = '✅ Todos usaron sus dos ataques.';
+        return implode("\n", $l);
+    }
+
+    $l[] = '<b>Faltan ataques de ' . count($pendientes) . ':</b>';
+    foreach ($pendientes as $p) {
+        $l[] = '· ' . tgEscapar((string) $p['nombre_juego']) . ' — le quedan ' . (2 - (int) $p['hechos']);
+    }
+    return implode("\n", $l);
+}
+
+function fichaJugador(string $busqueda): string
+{
+    if ($busqueda === '') {
+        return 'Dime a quién busco. Ejemplo: <code>/jugador Lord H</code>';
+    }
+
+    $db   = getDB();
+    $stmt = $db->prepare(
+        'SELECT j.*, s.th_nivel, s.trofeos, s.donaciones, s.donaciones_recibidas,
+                s.acum_guerra_estrellas, s.acum_cwl_estrellas, s.acum_capital_oro, s.acum_juegos_puntos
+           FROM jugadores j
+           LEFT JOIN snapshots_jugador s
+                  ON s.jugador_id = j.id
+                 AND s.fecha = (SELECT MAX(fecha) FROM snapshots_jugador)
+          WHERE j.nombre_juego LIKE ? OR j.tag = ?
+       ORDER BY j.activo DESC LIMIT 1'
+    );
+    $stmt->execute(['%' . $busqueda . '%', cocNormalizarTag($busqueda)]);
+    $j = $stmt->fetch();
+
+    if (!$j) {
+        return 'No encuentro a nadie que se llame así.';
+    }
+
+    $l = [];
+    $l[] = '<b>' . tgEscapar((string) $j['nombre_juego']) . '</b> <code>' . tgEscapar((string) $j['tag']) . '</code>';
+    $l[] = ucfirst((string) $j['rol_clan']) . ($j['activo'] ? '' : ' · ⚠️ ya no está en el clan');
+    $l[] = 'TH' . (int) $j['th_nivel'] . ' · ' . number_format((int) $j['trofeos']) . ' trofeos';
+    $l[] = '';
+    $l[] = 'Donaciones: ' . number_format((int) $j['donaciones']) . ' dadas, ' . number_format((int) $j['donaciones_recibidas']) . ' recibidas';
+    $l[] = '';
+    $l[] = '<b>De por vida</b>';
+    $l[] = '⭐ ' . number_format((int) $j['acum_guerra_estrellas']) . ' estrellas de guerra';
+    $l[] = '🏆 ' . number_format((int) $j['acum_cwl_estrellas']) . ' estrellas de liga';
+    $l[] = '🪙 ' . number_format((int) $j['acum_capital_oro']) . ' oro de capital';
+    $l[] = '🎮 ' . number_format((int) $j['acum_juegos_puntos']) . ' puntos de juegos';
+
+    return implode("\n", $l);
+}
+
+/** @param array<string,mixed> $admin */
+function autorizar(array $admin, string $arg): string
+{
+    if (!$admin['es_duenio']) {
+        return 'Solo el dueño del bot puede autorizar a otros.';
+    }
+    if (!preg_match('/^\d{5,15}$/', $arg)) {
+        return "Mándame el id numérico de Telegram de esa persona.\n\n"
+             . "Puede obtenerlo escribiéndole a <code>@userinfobot</code>. "
+             . "Antes de que le funcione, esa persona tiene que escribirme a mí primero.";
+    }
+
+    getDB()->prepare(
+        'INSERT INTO telegram_admins (telegram_id, es_duenio) VALUES (?, 0)
+         ON DUPLICATE KEY UPDATE recibe_avisos = 1'
+    )->execute([(int) $arg]);
+
+    tgEnviar('Te dieron acceso al asistente del clan H@TCH. Escribe /ayuda para ver qué puedo hacer.', $arg);
+    return '✅ Autorizado. Le avisé por privado.';
+}
+
+function listaAdmins(): string
+{
+    $l = ['<b>Con acceso al bot</b>'];
+    foreach (getDB()->query('SELECT * FROM telegram_admins ORDER BY es_duenio DESC, creado_en ASC') as $a) {
+        $l[] = '· ' . tgEscapar((string) ($a['nombre'] ?: $a['telegram_id']))
+             . ($a['es_duenio'] ? ' <i>(dueño)</i>' : '')
+             . ($a['recibe_avisos'] ? '' : ' <i>(sin avisos)</i>');
+    }
+    return implode("\n", $l);
 }
