@@ -88,15 +88,18 @@ function mensajesNoAtacaron(int $guerraId): array
             continue;
         }
         [$header, $nota] = $plantillas[$nivel];
-        foreach (empaquetarMenciones($grupos[$nivel]) as $lote) {
-            $mensajes[] = $header . "\n"
-                        . implode(' ', array_map(fn($n) => '@' . $n, $lote)) . "\n"
-                        . $nota;
+        // Todo en una sola línea: el chat del juego toma el salto de línea
+        // como "enviar" y cortaría el mensaje al pegarlo. El margen es lo
+        // que ocupa el encabezado, la nota y los separadores.
+        $margen = mb_strlen($header) + mb_strlen($nota) + 3;
+        foreach (empaquetarMenciones($grupos[$nivel], $margen) as $lote) {
+            $arrobas = implode(' ', array_map(fn($n) => '@' . $n, $lote));
+            $mensajes[] = $header . ' ' . $arrobas . '. ' . $nota;
         }
     }
 
-    // Cierre en buen tono: recuerda que quien no quiera o no pueda jugar
-    // puede desactivar la guerra en vez de arriesgarse a la expulsión.
+    // Cierre en buen tono, también en una sola línea: quien no quiera o no
+    // pueda jugar puede desactivar la guerra en vez de arriesgar expulsión.
     $mensajes[] = 'Si no vas a poder participar, cambia tu estatus a '
                 . '"No guerra" en el juego para que no se te agregue. '
                 . 'Así evitamos avisos.';
@@ -106,17 +109,14 @@ function mensajesNoAtacaron(int $guerraId): array
 
 /**
  * Reparte nombres en lotes que quepan en un mensaje del chat de Clash:
- * a lo sumo 5 menciones y 160 caracteres contando encabezado y nota.
+ * a lo sumo 5 menciones y 160 caracteres contando lo que ya ocupan el
+ * encabezado y la nota, que se pasa en $margen.
  *
  * @param  list<string> $nombres
  * @return list<list<string>>
  */
-function empaquetarMenciones(array $nombres): array
+function empaquetarMenciones(array $nombres, int $margen): array
 {
-    // Margen fijo que gastan el encabezado y la nota más largos, para no
-    // calcularlo por plantilla: ~35 + ~35 + dos saltos de línea.
-    $margen = 74;
-
     $lotes = [];
     $lote  = [];
     foreach ($nombres as $n) {
