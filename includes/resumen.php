@@ -70,8 +70,6 @@ function resumenDiario(?array $roster = null): array
             $novedad  = true;
             $lineas[] = '';
             $lineas[] = '<b>🔥 Guerra contra ' . tgEscapar((string) $guerra['oponente']) . '</b>';
-            $lineas[] = 'Faltan ataques de ' . count($pendientes) . ':';
-
             // Lista COMPLETA con @usuario, agrupada por ataques restantes y en
             // bloques de 5 por línea — para copiar y pegar al chat del clan.
             $porUsar = [2 => [], 1 => []];
@@ -85,12 +83,15 @@ function resumenDiario(?array $roster = null): array
                 }
 
                 $lineas[] = '';
-                $lineas[] = '<b>' . $n . ' ' . ($n === 1 ? 'ataque' : 'ataques') . ':</b>';
 
-                if ($n === 1) {
-                    $lineas[] = 'Y para el segundo (limpieza) solo faltando 4 horas puede atacar:';
-                    $lineas[] = '';
+                if ($n === 2) {
+                    $lineas[] = '<b>No hicieron ninguno de los 2 ataques:</b>';
+                } else {
+                    $lineas[] = '<b>1 ataque:</b>';
+                    $lineas[] = 'Y para el segundo (limpieza) solo faltando 4 horas ya puede atacar:';
                 }
+
+                $lineas[] = '';
 
                 foreach (array_chunk($porUsar[$n], 5) as $i => $bloque) {
                     if ($i > 0) {
