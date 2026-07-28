@@ -87,6 +87,11 @@ function resumenDiario(?array $roster = null): array
                 $lineas[] = '';
                 $lineas[] = '<b>' . $n . ' ' . ($n === 1 ? 'ataque' : 'ataques') . ':</b>';
 
+                if ($n === 1) {
+                    $lineas[] = 'Y para el segundo (limpieza) solo faltando 4 horas puede atacar:';
+                    $lineas[] = '';
+                }
+
                 foreach (array_chunk($porUsar[$n], 5) as $i => $bloque) {
                     if ($i > 0) {
                         $lineas[] = '';
