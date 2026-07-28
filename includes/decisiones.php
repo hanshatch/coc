@@ -108,7 +108,7 @@ function decisionesClan(int $dias = 30): array
     // ── Jugadores ─────────────────────────────────────────────
     $stmt = $db->prepare(
         'SELECT j.id, j.tag, j.nombre_juego, j.rol_clan,
-                s.th_nivel, s.donaciones, s.acum_guerra_estrellas
+                s.th_nivel, s.donaciones, s.acum_guerra_estrellas, s.guerra_activa
            FROM jugadores j
            LEFT JOIN snapshots_jugador s ON s.jugador_id = j.id AND s.fecha = ?
           WHERE j.activo = 1'
@@ -174,6 +174,9 @@ function decisionesClan(int $dias = 30): array
         $j['calidad']    = $j['promGuerra'] ?? $j['promLiga'];
 
         $j['ultimaActividad'] = $actividad[$id] ?? null;
+        // NULL (aún sin capturar) se trata como activada, para no excluir
+        // a nadie antes del primer snapshot con este dato.
+        $j['guerraActiva'] = ($j['guerra_activa'] ?? 1) != 0;
         $j['expulsar'] = $arenas > 0 && $aporta === 0;
         $j['completo'] = $arenas >= 2 && $aporta === $arenas;
     }
@@ -182,7 +185,16 @@ function decisionesClan(int $dias = 30): array
     $expulsar = array_values(array_filter($jugadores, fn($j) => $j['expulsar']));
     usort($expulsar, fn($a, $b) => $a['historia'] <=> $b['historia']);
 
-    $mejores = array_values(array_filter($jugadores, fn($j) => !$j['expulsar']));
+    // Los que apagaron la guerra: el juego no los deja incluir en el mapa,
+    // así que recomendarlos sería mandar a la dirigencia a intentar algo
+    // imposible. Se listan aparte para poder pedirles que la activen.
+    $guerraApagada = array_values(array_filter($jugadores, fn($j) => !$j['guerraActiva']));
+    usort($guerraApagada, fn($a, $b) => $b['historia'] <=> $a['historia']);
+
+    $mejores = array_values(array_filter(
+        $jugadores,
+        fn($j) => !$j['expulsar'] && $j['guerraActiva']
+    ));
     usort($mejores, function (array $a, array $b): int {
         $ca = $a['arenas'] ? $a['aporta'] / $a['arenas'] : 0;
         $cb = $b['arenas'] ? $b['aporta'] / $b['arenas'] : 0;
@@ -197,6 +209,7 @@ function decisionesClan(int $dias = 30): array
         'jugadores'         => $jugadores,
         'expulsar'          => $expulsar,
         'mejores'           => $mejores,
+        'guerraApagada'     => $guerraApagada,
         'parciales'         => $parciales,
         'capOportunidades'  => $capOportunidades,
         'guerrasConDetalle' => $guerrasConDetalle,

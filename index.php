@@ -22,6 +22,7 @@ $d = decisionesClan($dias);
 $jugadores         = $d['jugadores'];
 $expulsar          = $d['expulsar'];
 $mejores           = $d['mejores'];
+$guerraApagada     = $d['guerraApagada'];
 $parciales         = $d['parciales'];
 $capOportunidades  = $d['capOportunidades'];
 $guerrasConDetalle = $d['guerrasConDetalle'];
@@ -172,12 +173,47 @@ require __DIR__ . '/includes/header.php';
                 <small class="text-muted">
                     La palomita marca a quien participó en todo lo que tuvo disponible.
                     Estrellas por ataque mide calidad, no esfuerzo: arriba de 2.5 destruye casi todo lo que toca.
+                    <?php if ($guerraApagada): ?>
+                        <br>Se excluyeron <?= count($guerraApagada) ?> con la guerra apagada (ver abajo).
+                    <?php endif; ?>
                 </small>
             </div>
             <?php endif; ?>
         </div>
     </div>
 </div>
+
+<?php if ($guerraApagada): ?>
+<!-- ── Guerra apagada ─────────────────────────────────────────── -->
+<div class="card mt-3" style="border-left:3px solid var(--ct-gold-text)">
+    <div class="card-header">
+        <i class="bi bi-gear-fill text-warning"></i> Con la guerra apagada
+        <span class="badge badge-gold ms-1"><?= count($guerraApagada) ?></span>
+    </div>
+    <div class="card-body py-2">
+        <small class="text-muted">
+            Tienen la participación en guerra desactivada en el juego, así que el mapa no los admite
+            y quedan fuera de las recomendaciones de arriba. No es falta de participación: es un ajuste
+            suyo. Si quieres contar con alguno, pídele que lo active desde su perfil.
+        </small>
+    </div>
+    <div class="table-responsive"><table class="table table-hover mb-0">
+        <thead><tr><th>Jugador</th><th class="text-center">TH</th><th class="text-center">Rol</th><th class="text-center">Historia</th></tr></thead>
+        <tbody>
+        <?php foreach ($guerraApagada as $j): ?>
+            <tr>
+                <td><strong class="text-white"><?= clean($j['nombre_juego']) ?></strong></td>
+                <td class="text-center"><?= $j['th_nivel'] ? 'TH' . (int) $j['th_nivel'] : '—' ?></td>
+                <td class="text-center"><span class="badge <?= $rolBadge[$j['rol_clan']] ?? 'badge-muted' ?>"><?= ucfirst($j['rol_clan']) ?></span></td>
+                <td class="text-center">
+                    <span class="<?= $j['historia'] >= 500 ? 'badge badge-blue' : 'text-muted' ?>"><?= number_format($j['historia']) ?> ⭐</span>
+                </td>
+            </tr>
+        <?php endforeach; ?>
+        </tbody>
+    </table></div>
+</div>
+<?php endif; ?>
 
 <!-- ── Zona gris ──────────────────────────────────────────────── -->
 <div class="card mt-3">

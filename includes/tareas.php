@@ -137,12 +137,13 @@ function tareaSnapshot(): string
 
         $stmt = $db->prepare(
             'INSERT INTO snapshots_jugador
-                (jugador_id, fecha, donaciones, donaciones_recibidas, trofeos, th_nivel, exp_nivel, rol,
+                (jugador_id, fecha, donaciones, donaciones_recibidas, trofeos, th_nivel, exp_nivel, rol, guerra_activa,
                  acum_guerra_estrellas, acum_cwl_estrellas, acum_capital_oro, acum_juegos_puntos, acum_donaciones)
-             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
              ON DUPLICATE KEY UPDATE
                 donaciones=VALUES(donaciones), donaciones_recibidas=VALUES(donaciones_recibidas),
                 trofeos=VALUES(trofeos), th_nivel=VALUES(th_nivel), exp_nivel=VALUES(exp_nivel), rol=VALUES(rol),
+                guerra_activa=VALUES(guerra_activa),
                 acum_guerra_estrellas=VALUES(acum_guerra_estrellas), acum_cwl_estrellas=VALUES(acum_cwl_estrellas),
                 acum_capital_oro=VALUES(acum_capital_oro), acum_juegos_puntos=VALUES(acum_juegos_puntos),
                 acum_donaciones=VALUES(acum_donaciones)'
@@ -152,10 +153,15 @@ function tareaSnapshot(): string
         foreach ($db->query('SELECT id, tag FROM jugadores WHERE activo = 1') as $j) {
             try {
                 $p = cocGet('/players/' . rawurlencode($j['tag']));
+                // warPreference: 'in' activada, 'out' apagada. NULL si la
+                // API no lo trae, para no confundirlo con apagada.
+                $guerraPref = isset($p['warPreference'])
+                    ? ($p['warPreference'] === 'in' ? 1 : 0)
+                    : null;
                 $stmt->execute([
                     (int) $j['id'], $hoy,
                     $p['donations'] ?? null, $p['donationsReceived'] ?? null, $p['trophies'] ?? null,
-                    $p['townHallLevel'] ?? null, $p['expLevel'] ?? null, $p['role'] ?? null,
+                    $p['townHallLevel'] ?? null, $p['expLevel'] ?? null, $p['role'] ?? null, $guerraPref,
                     $p['warStars'] ?? null,
                     $logro($p, 'War League Legend'), $logro($p, 'Aggressive Capitalism'),
                     $logro($p, 'Games Champion'), $logro($p, 'Friend in Need'),

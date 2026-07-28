@@ -174,6 +174,16 @@ function avisoIniciarGuerra(): string
         $l[] = '<i>No participaron en nada el último mes.</i>';
     }
 
+    if (!empty($d['guerraApagada'])) {
+        $l[] = '';
+        $l[] = '<b>⚙️ Tienen la guerra apagada</b> (el juego no los deja incluir):';
+        $l[] = implode(', ', array_map(
+            fn($j) => tgEscapar((string) $j['nombre_juego']),
+            array_slice($d['guerraApagada'], 0, 15)
+        ));
+        $l[] = '<i>Si quieres contar con ellos, pídeles que la activen en el juego.</i>';
+    }
+
     return implode("\n", $l);
 }
 

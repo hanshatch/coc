@@ -162,6 +162,7 @@ CREATE TABLE `snapshots_jugador` (
   `th_nivel` tinyint(4) DEFAULT NULL,
   `exp_nivel` int(11) DEFAULT NULL,
   `rol` varchar(20) DEFAULT NULL,
+  `guerra_activa` tinyint(1) DEFAULT NULL,
   `acum_guerra_estrellas` int(11) DEFAULT NULL,
   `acum_cwl_estrellas` int(11) DEFAULT NULL,
   `acum_capital_oro` bigint(20) DEFAULT NULL,
