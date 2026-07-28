@@ -71,11 +71,28 @@ function resumenDiario(?array $roster = null): array
             $lineas[] = '';
             $lineas[] = '<b>🔥 Guerra contra ' . tgEscapar((string) $guerra['oponente']) . '</b>';
             $lineas[] = 'Faltan ataques de ' . count($pendientes) . ':';
-            foreach (array_slice($pendientes, 0, 15) as $p) {
-                $lineas[] = '· ' . tgEscapar((string) $p['nombre_juego']) . ' — ' . (2 - (int) $p['hechos']) . ' por usar';
+
+            // Lista COMPLETA con @usuario, agrupada por ataques restantes y en
+            // bloques de 5 por línea — para copiar y pegar al chat del clan.
+            $porUsar = [2 => [], 1 => []];
+            foreach ($pendientes as $p) {
+                $porUsar[2 - (int) $p['hechos']][] = '@' . tgEscapar((string) $p['nombre_juego']);
             }
-            if (count($pendientes) > 15) {
-                $lineas[] = '· y ' . (count($pendientes) - 15) . ' más';
+
+            foreach ([2, 1] as $n) {
+                if ($porUsar[$n] === []) {
+                    continue;
+                }
+
+                $lineas[] = '';
+                $lineas[] = '<b>' . $n . ' ' . ($n === 1 ? 'ataque' : 'ataques') . ':</b>';
+
+                foreach (array_chunk($porUsar[$n], 5) as $i => $bloque) {
+                    if ($i > 0) {
+                        $lineas[] = '';
+                    }
+                    $lineas[] = implode(' ', $bloque);
+                }
             }
         }
     }
