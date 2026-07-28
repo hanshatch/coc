@@ -77,9 +77,9 @@ function mensajesNoAtacaron(int $guerraId): array
     }
 
     $plantillas = [
-        1 => ['1er aviso por no atacar en guerra:', 'Al 3er aviso: expulsión del clan.'],
-        2 => ['2do aviso por no atacar en guerra:', 'Al 3er aviso: expulsión del clan.'],
-        3 => ['AVISO FINAL: 3 guerras sin atacar.', 'Corresponde expulsión del clan.'],
+        1 => ['1er aviso por no atacar en guerra:', 'Al 3er aviso no se les agrega a guerras.'],
+        2 => ['2do aviso por no atacar en guerra:', 'Al 3er aviso no se les agrega a guerras.'],
+        3 => ['AVISO FINAL: 3 guerras sin atacar.', 'No se les agregará a próximas guerras.'],
     ];
 
     $mensajes = [];
@@ -244,22 +244,22 @@ function avisoFinDeGuerra(int $guerraId): ?string
 
         $l[] = '';
         $l[] = '<b>❌ No hicieron ningún ataque (' . count($sinAtacar) . ')</b>';
-        $paraExpulsar = [];
+        $fueraDeGuerra = [];
         foreach ($sinAtacar as $f) {
             $r = $rachas[(int) $f['jugador_id']] ?? 1;
             $nota = $r === 1
                 ? '1ª guerra'
                 : $r . ' guerras seguidas';
-            if ($r >= GUERRAS_SIN_ATACAR_EXPULSA) {
-                $nota .= ' — 🚫 EXPULSAR (política de ' . GUERRAS_SIN_ATACAR_EXPULSA . ')';
-                $paraExpulsar[] = $f['nombre_juego'];
+            if ($r >= GUERRAS_SIN_ATACAR_LIMITE) {
+                $nota .= ' — 🚫 fuera de próximas guerras (política de ' . GUERRAS_SIN_ATACAR_LIMITE . ')';
+                $fueraDeGuerra[] = $f['nombre_juego'];
             }
             $l[] = '· ' . tgEscapar((string) $f['nombre_juego']) . ' — ' . $nota;
         }
 
-        if ($paraExpulsar) {
+        if ($fueraDeGuerra) {
             $l[] = '';
-            $l[] = '⚠️ <b>Por política, a expulsar:</b> ' . tgEscapar(implode(', ', $paraExpulsar));
+            $l[] = '⚠️ <b>Por política, ya no se agregan a guerras:</b> ' . tgEscapar(implode(', ', $fueraDeGuerra));
         }
 
         $l[] = '';

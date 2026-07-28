@@ -19,8 +19,8 @@ const CUPO_GUERRA        = 25;
 const VETERANO_ESTRELLAS = 500;
 
 // Política del clan: tras esta cantidad de guerras seguidas sin hacer
-// ni un ataque, el jugador se expulsa.
-const GUERRAS_SIN_ATACAR_EXPULSA = 3;
+// ni un ataque, el jugador deja de agregarse a las próximas guerras.
+const GUERRAS_SIN_ATACAR_LIMITE = 3;
 
 /**
  * Guerras seguidas sin atacar de cada jugador.
@@ -223,6 +223,8 @@ function decisionesClan(int $dias = 30): array
 
         $j['ultimaActividad'] = $actividad[$id] ?? null;
         $j['rachaSinAtacar']  = $rachas[$id] ?? 0;
+        // Alcanzó la política: ya no se agrega a próximas guerras.
+        $j['fueraDeGuerra']   = $j['rachaSinAtacar'] >= GUERRAS_SIN_ATACAR_LIMITE;
         // NULL (aún sin capturar) se trata como activada, para no excluir
         // a nadie antes del primer snapshot con este dato.
         $j['guerraActiva'] = ($j['guerra_activa'] ?? 1) != 0;
@@ -245,9 +247,11 @@ function decisionesClan(int $dias = 30): array
     $sinAtacarGuerra = array_values(array_filter($jugadores, fn($j) => $j['rachaSinAtacar'] > 0));
     usort($sinAtacarGuerra, fn($a, $b) => $b['rachaSinAtacar'] <=> $a['rachaSinAtacar']);
 
+    // Fuera de "mejores" quien no aporta nada, quien apagó la guerra y
+    // quien ya cumplió la política de faltas: a esos no se les agrega.
     $mejores = array_values(array_filter(
         $jugadores,
-        fn($j) => !$j['expulsar'] && $j['guerraActiva']
+        fn($j) => !$j['expulsar'] && $j['guerraActiva'] && !$j['fueraDeGuerra']
     ));
     usort($mejores, function (array $a, array $b): int {
         $ca = $a['arenas'] ? $a['aporta'] / $a['arenas'] : 0;
