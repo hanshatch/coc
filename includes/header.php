@@ -53,6 +53,9 @@ $currentName = str_replace('.php', '', $currentPage);
         <a href="index" class="nav-link <?= $currentName === 'index' ? 'active' : '' ?>">
             <span class="nav-icon"><i class="bi bi-clipboard-data-fill"></i></span> Decisiones
         </a>
+        <a href="participacion" class="nav-link <?= $currentName === 'participacion' ? 'active' : '' ?>">
+            <span class="nav-icon"><i class="bi bi-list-check"></i></span> Participación
+        </a>
         <a href="jugadores" class="nav-link <?= $currentName === 'jugadores' ? 'active' : '' ?>">
             <span class="nav-icon"><i class="bi bi-people-fill"></i></span> Jugadores
         </a>
