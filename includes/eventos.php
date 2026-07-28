@@ -89,7 +89,7 @@ function avisoFinDeGuerra(int $guerraId): ?string
     }
 
     $stmt = $db->prepare(
-        'SELECT j.nombre_juego,
+        'SELECT gp.jugador_id, j.nombre_juego,
                 COALESCE(gp.ataque1_estrellas,0) + COALESCE(gp.ataque2_estrellas,0) AS estrellas,
                 COALESCE(gp.ataque1_porcentaje,0) + COALESCE(gp.ataque2_porcentaje,0) AS destruccion,
                 (gp.ataque1_estrellas IS NOT NULL) + (gp.ataque2_estrellas IS NOT NULL) AS ataques
@@ -104,6 +104,8 @@ function avisoFinDeGuerra(int $guerraId): ?string
     if (!$filas) {
         return null;
     }
+
+    $rachas = rachasSinAtacar();
 
     $resultado = match ($g['resultado']) {
         'victoria' => '🏆 <b>¡Ganamos!</b>',
@@ -131,11 +133,28 @@ function avisoFinDeGuerra(int $guerraId): ?string
 
     $sinAtacar = array_filter($filas, fn($f) => (int) $f['ataques'] === 0);
     if ($sinAtacar) {
+        // Se ordenan por racha: arriba los que están más cerca de expulsión.
+        usort($sinAtacar, fn($a, $b) => ($rachas[(int) $b['jugador_id']] ?? 0) <=> ($rachas[(int) $a['jugador_id']] ?? 0));
+
         $l[] = '';
-        $l[] = '<b>No atacaron:</b> ' . implode(', ', array_map(
-            fn($f) => tgEscapar((string) $f['nombre_juego']),
-            array_slice($sinAtacar, 0, 10)
-        ));
+        $l[] = '<b>❌ No hicieron ningún ataque (' . count($sinAtacar) . ')</b>';
+        $paraExpulsar = [];
+        foreach ($sinAtacar as $f) {
+            $r = $rachas[(int) $f['jugador_id']] ?? 1;
+            $nota = $r === 1
+                ? '1ª guerra'
+                : $r . ' guerras seguidas';
+            if ($r >= GUERRAS_SIN_ATACAR_EXPULSA) {
+                $nota .= ' — 🚫 EXPULSAR (política de ' . GUERRAS_SIN_ATACAR_EXPULSA . ')';
+                $paraExpulsar[] = $f['nombre_juego'];
+            }
+            $l[] = '· ' . tgEscapar((string) $f['nombre_juego']) . ' — ' . $nota;
+        }
+
+        if ($paraExpulsar) {
+            $l[] = '';
+            $l[] = '⚠️ <b>Por política, a expulsar:</b> ' . tgEscapar(implode(', ', $paraExpulsar));
+        }
     }
 
     return implode("\n", $l);

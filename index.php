@@ -23,6 +23,7 @@ $jugadores         = $d['jugadores'];
 $expulsar          = $d['expulsar'];
 $mejores           = $d['mejores'];
 $guerraApagada     = $d['guerraApagada'];
+$sinAtacarGuerra   = $d['sinAtacarGuerra'];
 $parciales         = $d['parciales'];
 $capOportunidades  = $d['capOportunidades'];
 $guerrasConDetalle = $d['guerrasConDetalle'];
@@ -182,6 +183,46 @@ require __DIR__ . '/includes/header.php';
         </div>
     </div>
 </div>
+
+<?php if ($sinAtacarGuerra): ?>
+<!-- ── Política de 3 guerras sin atacar ───────────────────────── -->
+<div class="card mt-3" style="border-left:3px solid var(--ct-red-text)">
+    <div class="card-header">
+        <i class="bi bi-flag-fill text-danger"></i> Guerras seguidas sin atacar
+        <span class="badge badge-red ms-1"><?= count(array_filter($sinAtacarGuerra, fn($j) => $j['rachaSinAtacar'] >= GUERRAS_SIN_ATACAR_EXPULSA)) ?> a expulsar</span>
+    </div>
+    <div class="card-body py-2">
+        <small class="text-muted">
+            Política del clan: <?= GUERRAS_SIN_ATACAR_EXPULSA ?> guerras seguidas sin hacer ni un ataque y se expulsa.
+            La racha se reinicia sola en cuanto atacan una vez. Solo cuenta a quien fue convocado al mapa.
+        </small>
+    </div>
+    <div class="table-responsive"><table class="table table-hover mb-0">
+        <thead><tr><th>Jugador</th><th class="text-center">Guerras seguidas sin atacar</th><th class="text-center">Estado</th></tr></thead>
+        <tbody>
+        <?php foreach ($sinAtacarGuerra as $j): ?>
+            <tr>
+                <td><strong class="text-white"><?= clean($j['nombre_juego']) ?></strong></td>
+                <td class="text-center">
+                    <span class="badge <?= $j['rachaSinAtacar'] >= GUERRAS_SIN_ATACAR_EXPULSA ? 'badge-red' : ($j['rachaSinAtacar'] >= 2 ? 'badge-gold' : 'badge-muted') ?>">
+                        <?= (int) $j['rachaSinAtacar'] ?> de <?= GUERRAS_SIN_ATACAR_EXPULSA ?>
+                    </span>
+                </td>
+                <td class="text-center">
+                    <?php if ($j['rachaSinAtacar'] >= GUERRAS_SIN_ATACAR_EXPULSA): ?>
+                        <span class="badge badge-red">🚫 Expulsar</span>
+                    <?php elseif ($j['rachaSinAtacar'] == GUERRAS_SIN_ATACAR_EXPULSA - 1): ?>
+                        <span class="badge badge-gold">Última oportunidad</span>
+                    <?php else: ?>
+                        <span class="text-muted">En observación</span>
+                    <?php endif; ?>
+                </td>
+            </tr>
+        <?php endforeach; ?>
+        </tbody>
+    </table></div>
+</div>
+<?php endif; ?>
 
 <?php if ($guerraApagada): ?>
 <!-- ── Guerra apagada ─────────────────────────────────────────── -->

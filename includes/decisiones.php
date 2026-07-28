@@ -18,6 +18,53 @@ require_once __DIR__ . '/../config/database.php';
 const CUPO_GUERRA        = 25;
 const VETERANO_ESTRELLAS = 500;
 
+// Política del clan: tras esta cantidad de guerras seguidas sin hacer
+// ni un ataque, el jugador se expulsa.
+const GUERRAS_SIN_ATACAR_EXPULSA = 3;
+
+/**
+ * Guerras seguidas sin atacar de cada jugador.
+ *
+ * Se deriva de guerra_participaciones, que es la única fuente: llevar un
+ * contador aparte podría desincronizarse. Cuenta las guerras más
+ * recientes en las que estuvo en el mapa y no hizo ningún ataque, y
+ * corta en la primera en la que sí atacó. Es decir, atacar una vez
+ * pone el contador en cero: la racha mide desinterés sostenido, no un
+ * despiste suelto.
+ *
+ * Solo cuentan guerras terminadas y donde estuvo convocado (tiene fila).
+ *
+ * @return array<int,int> jugador_id => guerras seguidas sin atacar
+ */
+function rachasSinAtacar(): array
+{
+    $filas = getDB()->query(
+        "SELECT gp.jugador_id,
+                (gp.ataque1_estrellas IS NOT NULL) + (gp.ataque2_estrellas IS NOT NULL) AS ataques
+           FROM guerra_participaciones gp
+           JOIN guerras g ON g.id = gp.guerra_id
+          WHERE g.resultado <> 'en_curso'
+       ORDER BY gp.jugador_id, g.fecha DESC, g.id DESC"
+    )->fetchAll();
+
+    $racha   = [];
+    $cerrada = [];
+    foreach ($filas as $r) {
+        $jid = (int) $r['jugador_id'];
+        if (isset($cerrada[$jid])) {
+            continue;
+        }
+        if ((int) $r['ataques'] === 0) {
+            $racha[$jid] = ($racha[$jid] ?? 0) + 1;
+        } else {
+            $racha[$jid]   = $racha[$jid] ?? 0;
+            $cerrada[$jid] = true;
+        }
+    }
+
+    return $racha;
+}
+
 /**
  * @return array{
  *   jugadores:list<array>, expulsar:list<array>, mejores:list<array>, parciales:list<array>,
@@ -117,6 +164,7 @@ function decisionesClan(int $dias = 30): array
     $jugadores = $stmt->fetchAll();
 
     $actividad = ultimaActividad();
+    $rachas    = rachasSinAtacar();
 
     foreach ($jugadores as &$j) {
         $id     = (int) $j['id'];
@@ -174,6 +222,7 @@ function decisionesClan(int $dias = 30): array
         $j['calidad']    = $j['promGuerra'] ?? $j['promLiga'];
 
         $j['ultimaActividad'] = $actividad[$id] ?? null;
+        $j['rachaSinAtacar']  = $rachas[$id] ?? 0;
         // NULL (aún sin capturar) se trata como activada, para no excluir
         // a nadie antes del primer snapshot con este dato.
         $j['guerraActiva'] = ($j['guerra_activa'] ?? 1) != 0;
@@ -190,6 +239,11 @@ function decisionesClan(int $dias = 30): array
     // imposible. Se listan aparte para poder pedirles que la activen.
     $guerraApagada = array_values(array_filter($jugadores, fn($j) => !$j['guerraActiva']));
     usort($guerraApagada, fn($a, $b) => $b['historia'] <=> $a['historia']);
+
+    // Registro de la política de 3 guerras: quien arrastra rachas de no
+    // atacar, con los que ya la cumplen arriba.
+    $sinAtacarGuerra = array_values(array_filter($jugadores, fn($j) => $j['rachaSinAtacar'] > 0));
+    usort($sinAtacarGuerra, fn($a, $b) => $b['rachaSinAtacar'] <=> $a['rachaSinAtacar']);
 
     $mejores = array_values(array_filter(
         $jugadores,
@@ -210,6 +264,7 @@ function decisionesClan(int $dias = 30): array
         'expulsar'          => $expulsar,
         'mejores'           => $mejores,
         'guerraApagada'     => $guerraApagada,
+        'sinAtacarGuerra'   => $sinAtacarGuerra,
         'parciales'         => $parciales,
         'capOportunidades'  => $capOportunidades,
         'guerrasConDetalle' => $guerrasConDetalle,
