@@ -77,7 +77,13 @@ function tgLlamar(string $metodo, array $params = []): ?array
  * Telegram corta los mensajes a 4096 caracteres, así que se parte por
  * saltos de línea para no cortar una palabra a la mitad.
  */
-function tgEnviar(string $texto, ?string $chatId = null): bool
+/**
+ * Manda un mensaje. Con $html se interpretan <b>, <i>, <code>; sin él,
+ * el texto va literal. El modo plano sirve para el contenido pensado
+ * para copiar y pegar a otro lado, donde el marcado estorbaría y los
+ * nombres deben aparecer tal cual.
+ */
+function tgEnviar(string $texto, ?string $chatId = null, bool $html = true): bool
 {
     $destino = $chatId ?? (defined('TELEGRAM_CHAT_ID') ? TELEGRAM_CHAT_ID : '');
     if ($destino === '') {
@@ -87,12 +93,15 @@ function tgEnviar(string $texto, ?string $chatId = null): bool
 
     $ok = true;
     foreach (tgPartir($texto) as $parte) {
-        $r = tgLlamar('sendMessage', [
-            'chat_id'    => $destino,
-            'text'       => $parte,
-            'parse_mode' => 'HTML',
+        $params = [
+            'chat_id' => $destino,
+            'text'    => $parte,
             'link_preview_options' => ['is_disabled' => true],
-        ]);
+        ];
+        if ($html) {
+            $params['parse_mode'] = 'HTML';
+        }
+        $r = tgLlamar('sendMessage', $params);
         $ok = $ok && (bool) ($r['ok'] ?? false);
     }
 

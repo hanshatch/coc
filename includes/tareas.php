@@ -64,6 +64,12 @@ function tareaEventos(): string
                         avisarAdmins($texto);
                         $hechos[] = 'felicitación enviada';
                     }
+                    // Segundo mensaje, en plano: la línea de @menciones para
+                    // pegar al chat del clan sin tener que escribirla a mano.
+                    if ($mencion = mencionNoAtacaron((int) $g['id'])) {
+                        avisarAdmins($mencion, false);
+                        $hechos[] = 'menciones para el chat';
+                    }
                     avisarAdmins(avisoIniciarGuerra());
                     $hechos[] = 'recordatorio de nueva guerra';
                     tgGuardarAjuste('guerra_avisada', (string) $g['api_id']);

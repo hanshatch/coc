@@ -18,17 +18,48 @@ require_once __DIR__ . '/telegram.php';
 require_once __DIR__ . '/decisiones.php';
 
 /** Manda un aviso a todos los administradores que los tengan activados. */
-function avisarAdmins(string $texto): int
+function avisarAdmins(string $texto, bool $html = true): int
 {
     $destinos = getDB()->query('SELECT telegram_id FROM telegram_admins WHERE recibe_avisos = 1')
                        ->fetchAll(PDO::FETCH_COLUMN);
     $n = 0;
     foreach ($destinos as $chat) {
-        if (tgEnviar($texto, (string) $chat)) {
+        if (tgEnviar($texto, (string) $chat, $html)) {
             $n++;
         }
     }
     return $n;
+}
+
+/**
+ * Línea lista para pegar al chat del clan: menciona con @ a quienes no
+ * hicieron ningún ataque en la guerra. Va sin formato y con los nombres
+ * exactos del juego, porque es para copiar y pegar tal cual.
+ *
+ * El chat de Clash reconoce la mención solo si el nombre coincide
+ * exacto; con nombres muy decorados puede no enlazar, pero el texto
+ * igual sirve de llamado.
+ */
+function mencionNoAtacaron(int $guerraId): ?string
+{
+    $stmt = getDB()->prepare(
+        'SELECT j.nombre_juego
+           FROM guerra_participaciones gp
+           JOIN jugadores j ON j.id = gp.jugador_id
+          WHERE gp.guerra_id = ?
+            AND gp.ataque1_estrellas IS NULL
+            AND gp.ataque2_estrellas IS NULL
+       ORDER BY j.nombre_juego'
+    );
+    $stmt->execute([$guerraId]);
+    $nombres = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+    if (!$nombres) {
+        return null;
+    }
+
+    $arrobas = implode(' ', array_map(fn($n) => '@' . $n, $nombres));
+    return 'No hicieron ningún ataque en la guerra: ' . $arrobas;
 }
 
 /**
@@ -155,6 +186,9 @@ function avisoFinDeGuerra(int $guerraId): ?string
             $l[] = '';
             $l[] = '⚠️ <b>Por política, a expulsar:</b> ' . tgEscapar(implode(', ', $paraExpulsar));
         }
+
+        $l[] = '';
+        $l[] = '👇 <i>Abajo te dejo el texto listo para copiar al chat del clan.</i>';
     }
 
     return implode("\n", $l);
