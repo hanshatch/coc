@@ -31,19 +31,28 @@ function avisarAdmins(string $texto, bool $html = true): int
     return $n;
 }
 
+// El chat de Clash corta los mensajes y limita cuántas menciones enlaza.
+const CHAT_MAX_CHARS     = 160;
+const CHAT_MAX_MENCIONES = 5;
+
 /**
- * Línea lista para pegar al chat del clan: menciona con @ a quienes no
- * hicieron ningún ataque en la guerra. Va sin formato y con los nombres
- * exactos del juego, porque es para copiar y pegar tal cual.
+ * Mensajes listos para pegar al chat del clan, uno por cada bloque.
  *
- * El chat de Clash reconoce la mención solo si el nombre coincide
- * exacto; con nombres muy decorados puede no enlazar, pero el texto
- * igual sirve de llamado.
+ * Se agrupan por número de aviso, que es la racha de guerras seguidas
+ * sin atacar: 1 = primer aviso, 2 = segundo, 3 o más = aviso final con
+ * expulsión. Cada bloque respeta los topes del chat de Clash (160
+ * caracteres y 5 menciones), troceando si hace falta, para que el
+ * administrador copie y pegue sin tener que recortar nada.
+ *
+ * Van en texto plano y con los nombres exactos: el chat no entiende
+ * formato y la mención solo enlaza si el nombre coincide.
+ *
+ * @return list<string>
  */
-function mencionNoAtacaron(int $guerraId): ?string
+function mensajesNoAtacaron(int $guerraId): array
 {
     $stmt = getDB()->prepare(
-        'SELECT j.nombre_juego
+        'SELECT gp.jugador_id, j.nombre_juego
            FROM guerra_participaciones gp
            JOIN jugadores j ON j.id = gp.jugador_id
           WHERE gp.guerra_id = ?
@@ -52,14 +61,74 @@ function mencionNoAtacaron(int $guerraId): ?string
        ORDER BY j.nombre_juego'
     );
     $stmt->execute([$guerraId]);
-    $nombres = $stmt->fetchAll(PDO::FETCH_COLUMN);
+    $filas = $stmt->fetchAll();
 
-    if (!$nombres) {
-        return null;
+    if (!$filas) {
+        return [];
     }
 
-    $arrobas = implode(' ', array_map(fn($n) => '@' . $n, $nombres));
-    return 'No hicieron ningún ataque en la guerra: ' . $arrobas;
+    $rachas = rachasSinAtacar();
+
+    // Agrupar por nivel de aviso; de 3 en adelante es el aviso final.
+    $grupos = [1 => [], 2 => [], 3 => []];
+    foreach ($filas as $f) {
+        $nivel = min(3, max(1, $rachas[(int) $f['jugador_id']] ?? 1));
+        $grupos[$nivel][] = (string) $f['nombre_juego'];
+    }
+
+    $plantillas = [
+        1 => ['1er aviso por no atacar en guerra:', 'Al 3er aviso: expulsión del clan.'],
+        2 => ['2do aviso por no atacar en guerra:', 'Al 3er aviso: expulsión del clan.'],
+        3 => ['AVISO FINAL: 3 guerras sin atacar.', 'Corresponde expulsión del clan.'],
+    ];
+
+    $mensajes = [];
+    foreach ([1, 2, 3] as $nivel) {
+        if (!$grupos[$nivel]) {
+            continue;
+        }
+        [$header, $nota] = $plantillas[$nivel];
+        foreach (empaquetarMenciones($grupos[$nivel]) as $lote) {
+            $mensajes[] = $header . "\n"
+                        . implode(' ', array_map(fn($n) => '@' . $n, $lote)) . "\n"
+                        . $nota;
+        }
+    }
+
+    return $mensajes;
+}
+
+/**
+ * Reparte nombres en lotes que quepan en un mensaje del chat de Clash:
+ * a lo sumo 5 menciones y 160 caracteres contando encabezado y nota.
+ *
+ * @param  list<string> $nombres
+ * @return list<list<string>>
+ */
+function empaquetarMenciones(array $nombres): array
+{
+    // Margen fijo que gastan el encabezado y la nota más largos, para no
+    // calcularlo por plantilla: ~35 + ~35 + dos saltos de línea.
+    $margen = 74;
+
+    $lotes = [];
+    $lote  = [];
+    foreach ($nombres as $n) {
+        $prueba = array_merge($lote, [$n]);
+        $largo  = $margen + mb_strlen(implode(' ', array_map(fn($x) => '@' . $x, $prueba)));
+
+        if ($lote && (count($prueba) > CHAT_MAX_MENCIONES || $largo > CHAT_MAX_CHARS)) {
+            $lotes[] = $lote;
+            $lote    = [$n];
+        } else {
+            $lote = $prueba;
+        }
+    }
+    if ($lote) {
+        $lotes[] = $lote;
+    }
+
+    return $lotes;
 }
 
 /**

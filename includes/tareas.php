@@ -64,11 +64,15 @@ function tareaEventos(): string
                         avisarAdmins($texto);
                         $hechos[] = 'felicitación enviada';
                     }
-                    // Segundo mensaje, en plano: la línea de @menciones para
-                    // pegar al chat del clan sin tener que escribirla a mano.
-                    if ($mencion = mencionNoAtacaron((int) $g['id'])) {
-                        avisarAdmins($mencion, false);
-                        $hechos[] = 'menciones para el chat';
+                    // Mensajes en plano, uno por bloque, listos para pegar
+                    // al chat del clan: agrupados por número de aviso y
+                    // troceados a los topes del chat (160 chars, 5 menciones).
+                    $bloques = mensajesNoAtacaron((int) $g['id']);
+                    foreach ($bloques as $bloque) {
+                        avisarAdmins($bloque, false);
+                    }
+                    if ($bloques) {
+                        $hechos[] = count($bloques) . ' mensaje(s) para el chat';
                     }
                     avisarAdmins(avisoIniciarGuerra());
                     $hechos[] = 'recordatorio de nueva guerra';
