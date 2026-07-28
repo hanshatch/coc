@@ -95,6 +95,12 @@ function mensajesNoAtacaron(int $guerraId): array
         }
     }
 
+    // Cierre en buen tono: recuerda que quien no quiera o no pueda jugar
+    // puede desactivar la guerra en vez de arriesgarse a la expulsión.
+    $mensajes[] = 'Si no vas a poder participar, cambia tu estatus a '
+                . '"No guerra" en el juego para que no se te agregue. '
+                . 'Así evitamos avisos.';
+
     return $mensajes;
 }
 
