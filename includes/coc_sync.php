@@ -212,12 +212,12 @@ function cocImportarGuerraActual(): array
 
     $estado = (string) ($w['state'] ?? 'notInWar');
     if (!in_array($estado, ['preparation', 'inWar', 'warEnded'], true)) {
-        return ['estado' => $estado, 'jugadores' => 0];
+        return ['estado' => $estado, 'jugadores' => 0, 'fin' => ''];
     }
 
     $apiId = (string) ($w['endTime'] ?? '');
     if ($apiId === '') {
-        return ['estado' => $estado, 'jugadores' => 0];
+        return ['estado' => $estado, 'jugadores' => 0, 'fin' => ''];
     }
 
     $mios   = $w['clan'] ?? [];
@@ -286,7 +286,7 @@ function cocImportarGuerraActual(): array
         $n++;
     }
 
-    return ['estado' => $estado, 'jugadores' => $n];
+    return ['estado' => $estado, 'jugadores' => $n, 'fin' => $apiId];
 }
 
 /**
