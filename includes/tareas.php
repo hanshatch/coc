@@ -82,6 +82,28 @@ function tareaEventos(): string
 
             tgGuardarAjuste('guerra_estado', $ahora);
         }
+
+        // Recordatorio a falta de pocas horas del cierre, una sola vez por
+        // guerra. Solo en día de batalla: en preparación no hay ataques.
+        if ($ahora === 'inWar' && ($r['fin'] ?? '') !== '') {
+            $faltan = cocHoraATimestamp($r['fin']) - time();
+            $yaAvisado = tgAjuste('guerra_recordatorio4h') ?? '';
+
+            if ($faltan > 0 && $faltan <= 4 * 3600 && $yaAvisado !== $r['fin']) {
+                $g = $db->query('SELECT id FROM guerras ORDER BY fecha DESC, id DESC LIMIT 1')->fetch();
+                if ($g) {
+                    $bloques = mensajesRecordatorioGuerra((int) $g['id']);
+                    foreach ($bloques as $bloque) {
+                        avisarAdmins($bloque, false);
+                    }
+                    $hechos[] = $bloques
+                        ? 'recordatorio 4h: ' . count($bloques) . ' mensaje(s)'
+                        : 'recordatorio 4h: todos atacaron';
+                    // Se marca aunque no haya faltantes, para no reintentar.
+                    tgGuardarAjuste('guerra_recordatorio4h', $r['fin']);
+                }
+            }
+        }
     } catch (Throwable $e) {
         $hechos[] = 'error guerra: ' . $e->getMessage();
     }

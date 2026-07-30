@@ -202,7 +202,7 @@ function cocImportarGuerras(int $limite = 50): array
  * ataques pero ya se sabe a quién metieron al mapa. Esa distinción es la
  * que permite detectar al que fue convocado y no atacó.
  *
- * @return array{estado:string,jugadores:int}
+ * @return array{estado:string,jugadores:int,fin:string}
  * @throws CocApiException
  */
 function cocImportarGuerraActual(): array

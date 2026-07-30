@@ -108,6 +108,73 @@ function mensajesNoAtacaron(int $guerraId): array
 }
 
 /**
+ * Convierte la hora de la API (20260730T143000.000Z, siempre UTC) a
+ * timestamp. Se leen posiciones fijas, así que da igual si trae o no
+ * milisegundos.
+ */
+function cocHoraATimestamp(string $s): int
+{
+    if (strlen($s) < 15) {
+        return 0;
+    }
+    return gmmktime(
+        (int) substr($s, 9, 2), (int) substr($s, 11, 2), (int) substr($s, 13, 2),
+        (int) substr($s, 4, 2), (int) substr($s, 6, 2), (int) substr($s, 0, 4)
+    );
+}
+
+/**
+ * Recordatorio a falta de pocas horas: mensajes listos para pegar al
+ * chat del clan con quienes aún no atacaron y quienes tienen su segundo
+ * ataque pendiente. Cada bloque respeta los topes del chat de Clash
+ * (una línea, 160 caracteres, 5 menciones).
+ *
+ * @return list<string>
+ */
+function mensajesRecordatorioGuerra(int $guerraId): array
+{
+    $stmt = getDB()->prepare(
+        'SELECT j.nombre_juego,
+                (gp.ataque1_estrellas IS NOT NULL) + (gp.ataque2_estrellas IS NOT NULL) AS hechos
+           FROM guerra_participaciones gp
+           JOIN jugadores j ON j.id = gp.jugador_id
+          WHERE gp.guerra_id = ?
+       ORDER BY j.nombre_juego'
+    );
+    $stmt->execute([$guerraId]);
+    $filas = $stmt->fetchAll();
+
+    $sinAtacar = [];
+    $unaMenos  = [];
+    foreach ($filas as $f) {
+        $h = (int) $f['hechos'];
+        if ($h === 0) {
+            $sinAtacar[] = (string) $f['nombre_juego'];
+        } elseif ($h === 1) {
+            $unaMenos[] = (string) $f['nombre_juego'];
+        }
+    }
+
+    $mensajes = [];
+
+    foreach ([
+        [$sinAtacar, '⏳ Faltan horas y no han atacado:', 'Ataquen sus 2 ya.'],
+        [$unaMenos,  '⏳ Les queda 1 ataque pendiente:', 'Aprovechen para limpiar.'],
+    ] as [$nombres, $header, $nota]) {
+        if (!$nombres) {
+            continue;
+        }
+        $margen = mb_strlen($header) + mb_strlen($nota) + 3;
+        foreach (empaquetarMenciones($nombres, $margen) as $lote) {
+            $arrobas = implode(' ', array_map(fn($n) => '@' . $n, $lote));
+            $mensajes[] = $header . ' ' . $arrobas . '. ' . $nota;
+        }
+    }
+
+    return $mensajes;
+}
+
+/**
  * Reparte nombres en lotes que quepan en un mensaje del chat de Clash:
  * a lo sumo 5 menciones y 160 caracteres contando lo que ya ocupan el
  * encabezado y la nota, que se pasa en $margen.
